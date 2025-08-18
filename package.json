@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:insert-dummy-data": "tsx scripts/insert-dummy-data.ts",
+    "db:clear-all-data": "tsx scripts/clear-all-data.ts"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",

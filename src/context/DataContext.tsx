@@ -6,6 +6,7 @@ import {
     calendarEvents as initialCalendarEvents, 
     novelties as initialNovelties 
 } from '@/lib/data';
+import { taskService, calendarEventService, noveltyService } from '@/lib/supabase-service';
 import type { Task, CalendarEvent, Novelty } from '@/types';
 
 type DataContextType = {
@@ -24,38 +25,7 @@ type DataContextType = {
   loading: boolean;
 };
 
-// Helper para guardar en localStorage
-function saveToStorage<T>(key: string, data: T) {
-    if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, JSON.stringify(data, (k, v) => {
-            // No es necesario un replacer para fechas si usamos ISO strings
-            return v;
-        }));
-    }
-}
 
-// Helper para cargar desde localStorage
-function loadFromStorage<T>(key: string, initialData: T): T {
-    if (typeof window === 'undefined') {
-        return initialData;
-    }
-    const stored = window.localStorage.getItem(key);
-    if (stored) {
-        try {
-            // Reviver para convertir ISO strings a objetos Date
-            return JSON.parse(stored, (k, v) => {
-                if (['startDate', 'endDate', 'start', 'end', 'updatedAt'].includes(k) && typeof v === 'string' && v.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
-                    return v; // Mantener como string ISO, los componentes lo manejarán
-                }
-                return v;
-            });
-        } catch (e) {
-            console.error(`Error parsing ${key} from localStorage`, e);
-            return initialData;
-        }
-    }
-    return initialData;
-}
 
 
 export const DataContext = createContext<DataContextType>({
@@ -75,50 +45,124 @@ export const DataContext = createContext<DataContextType>({
 });
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
-  const [tasks, setTasks] = useState<Task[]>(() => loadFromStorage('tasks', initialTasks));
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => loadFromStorage('calendarEvents', initialCalendarEvents));
-  const [novelties, setNovelties] = useState<Novelty[]>(() => loadFromStorage('novelties', initialNovelties));
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [novelties, setNovelties] = useState<Novelty[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
+  // Load all data from Supabase on mount
   useEffect(() => {
-    saveToStorage('tasks', tasks);
-  }, [tasks]);
+    const loadData = async () => {
+      try {
+        // Load all data in parallel
+        const [supabaseTasks, supabaseEvents, supabaseNovelties] = await Promise.all([
+          taskService.getAll(),
+          calendarEventService.getAll(),
+          noveltyService.getAll()
+        ]);
 
-  useEffect(() => {
-    saveToStorage('calendarEvents', calendarEvents);
-  }, [calendarEvents]);
+        // If no data exists, initialize with default data
+        if (supabaseTasks.length === 0) {
+          await taskService.upsertMany(initialTasks);
+          setTasks(initialTasks);
+        } else {
+          setTasks(supabaseTasks);
+        }
 
-  useEffect(() => {
-    saveToStorage('novelties', novelties);
-  }, [novelties]);
-  
-  useEffect(() => {
-    // Simulamos la carga para que el layout se muestre
-    setLoading(false);
+        if (supabaseEvents.length === 0) {
+          await calendarEventService.upsertMany(initialCalendarEvents);
+          setCalendarEvents(initialCalendarEvents);
+        } else {
+          setCalendarEvents(supabaseEvents);
+        }
+
+        if (supabaseNovelties.length === 0) {
+          await noveltyService.upsertMany(initialNovelties);
+          setNovelties(initialNovelties);
+        } else {
+          setNovelties(supabaseNovelties);
+        }
+      } catch (error) {
+        console.error('Error loading data from Supabase:', error);
+        // Fallback to initial data if Supabase fails
+        setTasks(initialTasks);
+        setCalendarEvents(initialCalendarEvents);
+        setNovelties(initialNovelties);
+      } finally {
+        setInitialized(true);
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  const addTask = (task: Task) => {
-    setTasks(prevTasks => [...prevTasks, task]);
+  const addTask = async (task: Task) => {
+    try {
+      const newTask = await taskService.create(task);
+      setTasks(prevTasks => [...prevTasks, newTask]);
+    } catch (error) {
+      console.error('Error adding task:', error);
+      // Optimistically add to state even if Supabase fails
+      setTasks(prevTasks => [...prevTasks, task]);
+    }
   };
 
-  const updateTask = (updatedTask: Task) => {
-    setTasks(currentTasks => currentTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+  const updateTask = async (updatedTask: Task) => {
+    try {
+      const updated = await taskService.update(updatedTask.id, updatedTask);
+      setTasks(currentTasks => currentTasks.map(t => t.id === updatedTask.id ? updated : t));
+    } catch (error) {
+      console.error('Error updating task:', error);
+      // Optimistically update state even if Supabase fails
+      setTasks(currentTasks => currentTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+    }
   };
 
-  const deleteTask = (taskId: string) => {
-    setTasks(currentTasks => currentTasks.filter(t => t.id !== taskId));
+  const deleteTask = async (taskId: string) => {
+    try {
+      await taskService.delete(taskId);
+      setTasks(currentTasks => currentTasks.filter(t => t.id !== taskId));
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      // Optimistically delete from state even if Supabase fails
+      setTasks(currentTasks => currentTasks.filter(t => t.id !== taskId));
+    }
   };
   
-  const addCalendarEvent = (event: CalendarEvent) => {
-    setCalendarEvents(prevEvents => [...prevEvents, event]);
+  const addCalendarEvent = async (event: CalendarEvent) => {
+    try {
+      const newEvent = await calendarEventService.create(event);
+      setCalendarEvents(prevEvents => [...prevEvents, newEvent]);
+    } catch (error) {
+      console.error('Error adding calendar event:', error);
+      // Optimistically add to state even if Supabase fails
+      setCalendarEvents(prevEvents => [...prevEvents, event]);
+    }
   };
   
-  const addNovelty = (novelty: Novelty) => {
-      setNovelties(prevNovelties => [...prevNovelties, {...novelty, id: `novelty-${Date.now()}`, updatedAt: new Date().toISOString()}]);
+  const addNovelty = async (novelty: Novelty) => {
+    const newNovelty = {...novelty, id: `novelty-${Date.now()}`, updatedAt: new Date().toISOString()};
+    try {
+      const created = await noveltyService.create(newNovelty);
+      setNovelties(prevNovelties => [...prevNovelties, created]);
+    } catch (error) {
+      console.error('Error adding novelty:', error);
+      // Optimistically add to state even if Supabase fails
+      setNovelties(prevNovelties => [...prevNovelties, newNovelty]);
+    }
   }
 
-  const updateNovelty = (updatedNovelty: Novelty) => {
-    setNovelties(currentNovelties => currentNovelties.map(n => n.id === updatedNovelty.id ? {...updatedNovelty, updatedAt: new Date().toISOString()} : n));
+  const updateNovelty = async (updatedNovelty: Novelty) => {
+    try {
+      const updated = await noveltyService.update(updatedNovelty.id, updatedNovelty);
+      setNovelties(currentNovelties => currentNovelties.map(n => n.id === updatedNovelty.id ? updated : n));
+    } catch (error) {
+      console.error('Error updating novelty:', error);
+      // Optimistically update state even if Supabase fails
+      setNovelties(currentNovelties => currentNovelties.map(n => n.id === updatedNovelty.id ? {...updatedNovelty, updatedAt: new Date().toISOString()} : n));
+    }
   };
 
   return (
