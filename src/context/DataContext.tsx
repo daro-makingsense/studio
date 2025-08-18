@@ -83,6 +83,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const addTask = async (task: Task) => {
     try {
       const newTask = await taskService.create(task);
+      console.log('New task:', newTask);
       setTasks(prevTasks => [...prevTasks, newTask]);
     } catch (error) {
       console.error('Error adding task:', error);
@@ -121,9 +122,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const addNovelty = async (novelty: Novelty) => {
-    const newNovelty = {...novelty, id: `novelty-${Date.now()}`, updatedAt: new Date().toISOString()};
     try {
-      const created = await noveltyService.create(newNovelty);
+      const created = await noveltyService.create(novelty);
       setNovelties(prevNovelties => [...prevNovelties, created]);
     } catch (error) {
       console.error('Error adding novelty:', error);

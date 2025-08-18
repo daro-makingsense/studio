@@ -83,10 +83,16 @@ export const taskService = {
   },
 
   async create(task: Task): Promise<Task> {
+    // console.log('Creating task:', task);
+    const { userId, startDate, endDate, startTime, ...etc } = task;
     const { data, error } = await supabase
       .from('tasks')
       .insert({
-        ...task,
+        user_id: userId,
+        start_date: startDate,
+        end_date: endDate,
+        start_time: startTime,
+        ...etc,
       })
       .select()
       .single();
@@ -201,7 +207,6 @@ export const noveltyService = {
       .from('novelties')
       .insert({
         ...novelty,
-        updated_at: novelty.updatedAt || new Date().toISOString()
       })
       .select()
       .single();
@@ -215,7 +220,6 @@ export const noveltyService = {
       .from('novelties')
       .update({
         ...updates,
-        updated_at: new Date().toISOString()
       })
       .eq('id', id)
       .select()

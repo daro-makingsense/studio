@@ -98,7 +98,7 @@ const dayMap: { [key: string]: string } = {
     Sunday: 'Dom',
 };
 
-const weekDays: { id: Task['days'] extends (infer U)[] ? U : never, label: string }[] = [
+const weekDays: { id: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday", label: string }[] = [
     { id: 'Monday', label: 'Lunes' },
     { id: 'Tuesday', label: 'Martes' },
     { id: 'Wednesday', label: 'Miércoles' },
@@ -170,9 +170,11 @@ function EditTaskForm({ task, onUpdate, onDelete, closeDialog }: { task: Task, o
     function onSubmit(values: TaskFormValues) {
         onUpdate({
             ...values,
+            startDate: values.startDate ? values.startDate.toISOString() : undefined,
+            endDate: values.endDate ? values.endDate.toISOString() : undefined,
             startTime: values.startTime === 'none' ? '' : values.startTime,
             description: values.description ?? '',
-        });
+        } as Task);
         closeDialog();
     }
 
@@ -494,16 +496,23 @@ function TaskCreatorForm({ closeDialog }: { closeDialog: () => void }) {
     },
   });
 
-  function onSubmit(values: z.infer<typeof newTaskFormSchema>) {
+  async function onSubmit(values: z.infer<typeof newTaskFormSchema>) {
     const newTask: Task = {
       id: `task-${Date.now()}`,
       ...values,
+      startDate: values.startDate?.toISOString(),
+      endDate: values.endDate?.toISOString(),
       days: values.days as Task['days'] || [],
       description: values.description || '',
     };
-    addTask(newTask);
-    alert('¡Tarea creada exitosamente!');
-    closeDialog();
+    try {
+      await addTask(newTask);
+      alert('¡Tarea creada exitosamente!');
+      closeDialog();
+    } catch (error) {
+      console.error('Error creating task:', error);
+      alert('Error al crear la tarea. Por favor, inténtalo de nuevo.');
+    }
   }
   
   return (
@@ -720,7 +729,7 @@ function TasksManager() {
     return tasks.filter((task) => {
       const userMatch = filters.user === 'all' || task.userId === filters.user;
       const statusMatch = filters.status === 'all' || task.status === filters.status;
-      const dayMatch = filters.day === 'all' || (task.days && task.days.includes(filters.day));
+      const dayMatch = filters.day === 'all' || (task.days && task.days.includes(filters.day as any));
       const searchMatch =
         filters.searchTerm === '' ||
         task.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
@@ -1179,7 +1188,7 @@ function UserProfileForm({ user, onUpdate, canEdit }: { user: User, onUpdate: (v
           </FormDescription>
            {form.formState.errors.workHours && (
               <p className="text-sm font-medium text-destructive mt-2">
-                {form.formState.errors.workHours.message}
+                {form.formState.errors.workHours.message as React.ReactNode}
               </p>
             )}
         </div>
