@@ -198,17 +198,15 @@ export default function UserAgendaPage() {
       const dayName = format(date, 'EEEE', { locale: enUS });
       
       let usersForDay = usersWithTasks.filter(u => {
-        const workDay = u.workHours[dayName as keyof User['workHours']];
-        const hasTasks = (u.tasksByDay[dayName] || []).length > 0;
         if (selectedUser !== 'all' && u.id !== selectedUser) {
           return false;
         }
-        return workDay?.active || hasTasks;
+        return true;
       });
 
       usersForDay.sort((a, b) => {
-        const aStart = a.workHours[dayName as keyof User['workHours']]?.start;
-        const bStart = b.workHours[dayName as keyof User['workHours']]?.start;
+        const aStart = a.workHours?.[dayName as keyof User['workHours']]?.start;
+        const bStart = b.workHours?.[dayName as keyof User['workHours']]?.start;
         if (aStart && bStart) return aStart.localeCompare(bStart);
         if (aStart) return 1;
         if (bStart) return -1;
@@ -331,7 +329,7 @@ export default function UserAgendaPage() {
 
                 <div className="flex flex-col gap-4">
                   {usersForDay.length > 0 ? usersForDay.map(user => {
-                    const workDay = user.workHours[dayName as keyof User['workHours']];
+                    const workDay = user.workHours?.[dayName as keyof User['workHours']];
                     const tasksForDay = user.tasksByDay[dayName] || [];
                     const isDropTarget = dragOverTarget?.userId === user.id && dragOverTarget.day === dayName;
 
@@ -376,14 +374,23 @@ export default function UserAgendaPage() {
                                        <TaskStatusChanger task={task} canChangeStatus={canChangeStatus} />
                                     </div>
                                   </div>
-                                )
-                              }) : (workDay?.active && (<div className="text-center text-xs text-muted-foreground py-4">Disponible para tareas</div>))}
+                                );
+                              }) : (
+                                <div className="flex flex-col items-center justify-center text-center h-full pt-4">
+                                    <p className="text-xs text-muted-foreground">
+                                        {workDay?.active ? 'Disponible para tareas' : 'Sin tareas asignadas'}
+                                    </p>
+                                    {canManageTasks && (
+                                        <Link href={`/admin?userId=${user.id}&date=${format(date, 'yyyy-MM-dd')}&day=${englishToDay[dayName as keyof typeof englishToDay]}&from=/`} className="w-full">
+                                            <Button variant="ghost" size="sm" className="w-full mt-2 text-xs">
+                                                <PlusCircle className="mr-2 h-3 w-3" />
+                                                Agregar Tarea
+                                            </Button>
+                                        </Link>
+                                    )}
+                                </div>
+                              )}
                           </div>
-                          {workDay?.active && (
-                            <Link href={`/admin?userId=${user.id}&date=${format(date, 'yyyy-MM-dd')}&day=${englishToDay[dayName as keyof typeof englishToDay]}&from=/`} className="w-full">
-                              <Button variant="ghost" size="sm" className="w-full mt-2 text-xs"><PlusCircle className="mr-2 h-3 w-3" />Agregar Tarea</Button>
-                            </Link>
-                          )}
                         </CardContent>
                       </Card>
                     );
