@@ -2,7 +2,8 @@
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
 import { userService } from '@/lib/supabase-service';
-import type { User } from '@/types';
+import type { DaysOfWeek, Task, User, WorkDay } from '@/types';
+import { Position } from 'postcss';
 
 const currentUserId = 'user-1'; 
 
@@ -58,19 +59,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, [users]);
 
   // Save to Supabase whenever users change (after initialization)
-  useEffect(() => {
-    if (!initialized || users.length === 0) return;
+  // useEffect(() => {
+  //   if (!initialized || users.length === 0) return;
 
-    const saveUsers = async () => {
-      try {
-        await userService.upsertMany(users);
-      } catch (error) {
-        console.error('Error saving users to Supabase:', error);
-      }
-    };
+  //   const saveUsers = async () => {
+  //     try {
+  //       await userService.upsertMany(users);
+  //     } catch (error) {
+  //       console.error('Error saving users to Supabase:', error);
+  //     }
+  //   };
 
-    saveUsers();
-  }, [users, initialized]);
+  //   saveUsers();
+  // }, [users, initialized]);
   
   const updateUserList = (updater: User[] | ((prevState: User[]) => User[])) => {
     setUsers(updater);

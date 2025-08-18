@@ -10,8 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:insert-dummy-data": "tsx scripts/insert-dummy-data.ts",
-    "db:clear-all-data": "tsx scripts/clear-all-data.ts"
+    "db:seed": "tsx scripts/insert-dummy-data.ts",
+    "db:delete": "tsx scripts/clear-all-data.ts"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",

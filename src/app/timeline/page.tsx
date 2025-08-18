@@ -306,8 +306,9 @@ const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
   }, [tasks, selectedDate, dayIndex]);
 
   const usersForDay = useMemo(() => {
+    console.debug('usersForDay', users);
     return users.filter(user => {
-      const workDay = user.workHours[dayKey as keyof typeof user.workHours];
+      const workDay = user.workHours[dayKey];
       const hasTasks = tasksForDay.some(t => t.userId === user.id);
       return workDay?.active || hasTasks;
     }).sort((a,b) => a.name.localeCompare(b.name));

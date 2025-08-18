@@ -9,7 +9,16 @@ export const userService = {
       .select('*');
     
     if (error) throw error;
-    return data || [];
+    if (!data) return [];
+
+    const users = data.map((user) => {
+      return {
+        workHours: user.work_hours,
+        frequentTasks: user.frequent_tasks,
+        ...user,
+      };
+    });
+    return users;
   },
 
   async getById(id: string): Promise<User | null> {
@@ -20,7 +29,14 @@ export const userService = {
       .single();
     
     if (error) throw error;
-    return data;
+    if (!data) return null;
+
+    const user = {
+      workHours: data.work_hours,
+      frequentTasks: data.frequent_tasks,
+      ...data,
+    };
+    return user;
   },
 
   async create(user: User): Promise<User> {
