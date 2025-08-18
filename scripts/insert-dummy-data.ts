@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { users, tasks, calendarEvents, novelties } from '../src/lib/data';
+import { users, tasks, calendarEvents, novelties } from '../src/lib/seed-data';
 import dotenv from 'dotenv';
 import path from 'path';
 

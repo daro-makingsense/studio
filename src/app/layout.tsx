@@ -11,10 +11,16 @@ import { UserProvider, UserContext } from '@/context/UserContext';
 import { DataProvider, DataContext } from '@/context/DataContext';
 import React, { useContext } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SupabaseError } from '@/components/SupabaseError';
 
 function AppLayout({ children }: { children: React.ReactNode }) {
-  const { loading: userLoading } = useContext(UserContext);
-  const { loading: dataLoading } = useContext(DataContext);
+  const { loading: userLoading, error: userError } = useContext(UserContext);
+  const { loading: dataLoading, error: dataError } = useContext(DataContext);
+
+  // Show error if either context has an error
+  if (userError || dataError) {
+    return <SupabaseError />;
+  }
 
   if (userLoading || dataLoading) {
     return (

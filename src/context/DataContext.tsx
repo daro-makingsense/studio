@@ -1,11 +1,6 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
-import { 
-    tasks as initialTasks, 
-    calendarEvents as initialCalendarEvents, 
-    novelties as initialNovelties 
-} from '@/lib/data';
 import { taskService, calendarEventService, noveltyService } from '@/lib/supabase-service';
 import type { Task, CalendarEvent, Novelty } from '@/types';
 
@@ -23,6 +18,7 @@ type DataContextType = {
   addNovelty: (novelty: Novelty) => void;
   updateNovelty: (novelty: Novelty) => void;
   loading: boolean;
+  error: Error | null;
 };
 
 
@@ -42,6 +38,7 @@ export const DataContext = createContext<DataContextType>({
   addNovelty: () => {},
   updateNovelty: () => {},
   loading: true,
+  error: null,
 });
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
@@ -49,6 +46,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [novelties, setNovelties] = useState<Novelty[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [initialized, setInitialized] = useState(false);
 
   // Load all data from Supabase on mount
@@ -62,33 +60,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
           noveltyService.getAll()
         ]);
 
-        // If no data exists, initialize with default data
-        if (supabaseTasks.length === 0) {
-          await taskService.upsertMany(initialTasks);
-          setTasks(initialTasks);
-        } else {
-          setTasks(supabaseTasks);
-        }
-
-        if (supabaseEvents.length === 0) {
-          await calendarEventService.upsertMany(initialCalendarEvents);
-          setCalendarEvents(initialCalendarEvents);
-        } else {
-          setCalendarEvents(supabaseEvents);
-        }
-
-        if (supabaseNovelties.length === 0) {
-          await noveltyService.upsertMany(initialNovelties);
-          setNovelties(initialNovelties);
-        } else {
-          setNovelties(supabaseNovelties);
-        }
-      } catch (error) {
-        console.error('Error loading data from Supabase:', error);
-        // Fallback to initial data if Supabase fails
-        setTasks(initialTasks);
-        setCalendarEvents(initialCalendarEvents);
-        setNovelties(initialNovelties);
+        setTasks(supabaseTasks);
+        setCalendarEvents(supabaseEvents);
+        setNovelties(supabaseNovelties);
+        setError(null);
+      } catch (err) {
+        console.error('Error loading data from Supabase:', err);
+        setError(err as Error);
+        // Keep empty arrays if Supabase fails - no fallback to mocked data
+        setTasks([]);
+        setCalendarEvents([]);
+        setNovelties([]);
       } finally {
         setInitialized(true);
         setLoading(false);
@@ -104,8 +86,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       setTasks(prevTasks => [...prevTasks, newTask]);
     } catch (error) {
       console.error('Error adding task:', error);
-      // Optimistically add to state even if Supabase fails
-      setTasks(prevTasks => [...prevTasks, task]);
+      throw error; // Propagate error to caller
     }
   };
 
@@ -115,8 +96,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       setTasks(currentTasks => currentTasks.map(t => t.id === updatedTask.id ? updated : t));
     } catch (error) {
       console.error('Error updating task:', error);
-      // Optimistically update state even if Supabase fails
-      setTasks(currentTasks => currentTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+      throw error; // Propagate error to caller
     }
   };
 
@@ -126,8 +106,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       setTasks(currentTasks => currentTasks.filter(t => t.id !== taskId));
     } catch (error) {
       console.error('Error deleting task:', error);
-      // Optimistically delete from state even if Supabase fails
-      setTasks(currentTasks => currentTasks.filter(t => t.id !== taskId));
+      throw error; // Propagate error to caller
     }
   };
   
@@ -137,8 +116,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       setCalendarEvents(prevEvents => [...prevEvents, newEvent]);
     } catch (error) {
       console.error('Error adding calendar event:', error);
-      // Optimistically add to state even if Supabase fails
-      setCalendarEvents(prevEvents => [...prevEvents, event]);
+      throw error; // Propagate error to caller
     }
   };
   
@@ -149,8 +127,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       setNovelties(prevNovelties => [...prevNovelties, created]);
     } catch (error) {
       console.error('Error adding novelty:', error);
-      // Optimistically add to state even if Supabase fails
-      setNovelties(prevNovelties => [...prevNovelties, newNovelty]);
+      throw error; // Propagate error to caller
     }
   }
 
@@ -160,8 +137,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       setNovelties(currentNovelties => currentNovelties.map(n => n.id === updatedNovelty.id ? updated : n));
     } catch (error) {
       console.error('Error updating novelty:', error);
-      // Optimistically update state even if Supabase fails
-      setNovelties(currentNovelties => currentNovelties.map(n => n.id === updatedNovelty.id ? {...updatedNovelty, updatedAt: new Date().toISOString()} : n));
+      throw error; // Propagate error to caller
     }
   };
 
@@ -179,7 +155,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setNovelties,
         addNovelty,
         updateNovelty,
-        loading
+        loading,
+        error
     }}>
       {children}
     </DataContext.Provider>

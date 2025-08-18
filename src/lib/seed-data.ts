@@ -1,5 +1,14 @@
+/**
+ * WARNING: This file contains seed data for initial database setup ONLY.
+ * DO NOT import or use this data directly in the application.
+ * All data should be loaded from Supabase.
+ * 
+ * To seed the database, use: npm run db:insert-dummy-data
+ */
+
 import type { User, Task, CalendarEvent, Novelty } from '@/types';
 
+// SEED DATA - DO NOT USE IN APPLICATION
 export const users: User[] = [
     {
       id: 'user-1',

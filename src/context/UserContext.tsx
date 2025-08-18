@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
-import { users as initialUsers } from '@/lib/data';
 import { userService } from '@/lib/supabase-service';
 import type { User } from '@/types';
 
@@ -12,6 +11,7 @@ type UserContextType = {
   setUsers: (users: User[] | ((prevState: User[]) => User[])) => void;
   currentUser: User | null;
   loading: boolean;
+  error: Error | null;
 };
 
 
@@ -20,12 +20,14 @@ export const UserContext = createContext<UserContextType>({
   setUsers: () => {},
   currentUser: null,
   loading: true,
+  error: null,
 });
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [initialized, setInitialized] = useState(false);
 
   // Load users from Supabase on mount
@@ -33,18 +35,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const loadUsers = async () => {
       try {
         const supabaseUsers = await userService.getAll();
-        
-        // If no users exist in Supabase, initialize with default data
-        if (supabaseUsers.length === 0) {
-          await userService.upsertMany(initialUsers);
-          setUsers(initialUsers);
-        } else {
-          setUsers(supabaseUsers);
-        }
-      } catch (error) {
-        console.error('Error loading users from Supabase:', error);
-        // Fallback to initial users if Supabase fails
-        setUsers(initialUsers);
+        setUsers(supabaseUsers);
+        setError(null);
+      } catch (err) {
+        console.error('Error loading users from Supabase:', err);
+        setError(err as Error);
+        // Keep empty array if Supabase fails - no fallback to mocked data
+        setUsers([]);
       } finally {
         setInitialized(true);
         setLoading(false);
@@ -80,7 +77,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <UserContext.Provider value={{ users, setUsers: updateUserList, currentUser, loading }}>
+    <UserContext.Provider value={{ users, setUsers: updateUserList, currentUser, loading, error }}>
       {children}
     </UserContext.Provider>
   );
