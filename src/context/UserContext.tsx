@@ -2,6 +2,7 @@
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
 import { users as initialUsers } from '@/lib/data';
+import { userService } from '@/lib/supabase-service';
 import type { User } from '@/types';
 
 const currentUserId = 'user-1'; 
@@ -13,27 +14,6 @@ type UserContextType = {
   loading: boolean;
 };
 
-function saveUsersToStorage(users: User[]) {
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem('users', JSON.stringify(users));
-  }
-}
-
-function loadUsersFromStorage(): User[] {
-  if (typeof window === 'undefined') {
-    return initialUsers;
-  }
-  const storedUsers = window.localStorage.getItem('users');
-  if (storedUsers) {
-    try {
-        return JSON.parse(storedUsers);
-    } catch(e) {
-        return initialUsers;
-    }
-  }
-  return initialUsers;
-}
-
 
 export const UserContext = createContext<UserContextType>({
   users: [],
@@ -43,18 +23,57 @@ export const UserContext = createContext<UserContextType>({
 });
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [users, setUsers] = useState<User[]>(loadUsersFromStorage);
+  const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
+  // Load users from Supabase on mount
   useEffect(() => {
-    saveUsersToStorage(users);
+    const loadUsers = async () => {
+      try {
+        const supabaseUsers = await userService.getAll();
+        
+        // If no users exist in Supabase, initialize with default data
+        if (supabaseUsers.length === 0) {
+          await userService.upsertMany(initialUsers);
+          setUsers(initialUsers);
+        } else {
+          setUsers(supabaseUsers);
+        }
+      } catch (error) {
+        console.error('Error loading users from Supabase:', error);
+        // Fallback to initial users if Supabase fails
+        setUsers(initialUsers);
+      } finally {
+        setInitialized(true);
+        setLoading(false);
+      }
+    };
+
+    loadUsers();
+  }, []);
+
+  // Update current user whenever users change
+  useEffect(() => {
     const user = users.find(u => u.id === currentUserId) || null;
     setCurrentUser(user);
-    if(loading){
-        setLoading(false);
-    }
-  }, [users, loading]);
+  }, [users]);
+
+  // Save to Supabase whenever users change (after initialization)
+  useEffect(() => {
+    if (!initialized || users.length === 0) return;
+
+    const saveUsers = async () => {
+      try {
+        await userService.upsertMany(users);
+      } catch (error) {
+        console.error('Error saving users to Supabase:', error);
+      }
+    };
+
+    saveUsers();
+  }, [users, initialized]);
   
   const updateUserList = (updater: User[] | ((prevState: User[]) => User[])) => {
     setUsers(updater);
