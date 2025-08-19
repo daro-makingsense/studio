@@ -30,7 +30,7 @@ export type Task = {
   description: string;
   userId: string;
   days?: DaysOfWeek[];
-  startDate?: string;
+  startDate: string;
   endDate?: string;
   startTime?: string; // "HH:mm"
   duration?: number; // in minutes

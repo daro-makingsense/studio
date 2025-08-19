@@ -145,79 +145,6 @@ export default function UserAgendaPage() {
     });
   }, [novelties, currentDate]);
 
-  const usersWithTasks = useMemo(() => {
-    if (!currentDate) return [];
-    
-    return users.map(user => ({
-      ...user,
-      tasksByDay: daysOfWeek.reduce((acc, date) => {
-        const dayName = format(date, 'EEEE', { locale: enUS });
-        const dayIndex = getDay(date); // Sunday is 0, Monday is 1
-        
-        const dayTasks = tasks.filter(task => {
-          if (task.userId !== user.id) return false;
-          if (task.status === 'archived') return false;
-
-          if (task.startDate) {
-            const taskStartDate = new Date(task.startDate);
-            const taskEndDate = task.endDate ? new Date(task.endDate) : new Date(8640000000000000);
-
-            if (!isWithinInterval(date, { start: taskStartDate, end: taskEndDate })) {
-                return false;
-            }
-            
-            if (task.days && task.days.length > 0) {
-              const taskDayIndices = task.days.map(d => (['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(d) + 1) % 7);
-              return taskDayIndices.includes(dayIndex);
-            } else {
-              return isSameDay(taskStartDate, date);
-            }
-          }
-          
-          return false;
-        });
-
-        dayTasks.sort((a, b) => {
-          if (a.startTime && b.startTime) {
-            return a.startTime.localeCompare(b.startTime);
-          }
-          if (a.startTime) return -1;
-          if (b.startTime) return 1;
-          return priorityOrder[a.priority] - priorityOrder[b.priority];
-        });
-
-        acc[dayName] = dayTasks;
-        return acc;
-      }, {} as { [key: string]: Task[] })
-    }));
-  }, [users, tasks, daysOfWeek, currentDate]);
-
-  const sortedUsersByDay = useMemo(() => {
-    const dailyUsers: { [key: string]: User[] } = {};
-    daysOfWeek.forEach(date => {
-      const dayName = format(date, 'EEEE', { locale: enUS });
-      
-      let usersForDay = usersWithTasks.filter(u => {
-        if (selectedUser !== 'all' && u.id !== selectedUser) {
-          return false;
-        }
-        return true;
-      });
-
-      usersForDay.sort((a, b) => {
-        const aStart = a.workHours?.[dayName as keyof User['workHours']]?.start;
-        const bStart = b.workHours?.[dayName as keyof User['workHours']]?.start;
-        if (aStart && bStart) return aStart.localeCompare(bStart);
-        if (aStart) return 1;
-        if (bStart) return -1;
-        return a.name.localeCompare(b.name);
-      });
-      
-      dailyUsers[dayName] = usersForDay;
-    });
-
-    return dailyUsers;
-  }, [usersWithTasks, selectedUser, daysOfWeek]);
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, taskId: string) => {
     if (!canManageTasks) return;
@@ -265,6 +192,7 @@ export default function UserAgendaPage() {
        <div className="flex flex-col md:flex-row items-center justify-between pb-4 gap-4">
         <div className="flex items-center gap-4">
           <h1 className="text-3xl font-bold font-headline">Agenda Semanal</h1>
+          {/* pagination */}
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setCurrentDate(subWeeks(currentDate, 1))}>
               <ChevronLeft className="h-4 w-4" />
@@ -276,6 +204,7 @@ export default function UserAgendaPage() {
           </div>
           <span className="font-semibold text-muted-foreground capitalize">{weekStart} - {weekEnd}</span>
         </div>
+        {/* user selector */}
         <div className="flex items-center space-x-4">
           <Select value={selectedUser} onValueChange={setSelectedUser}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Seleccionar usuario" /></SelectTrigger>
@@ -286,6 +215,7 @@ export default function UserAgendaPage() {
           </Select>
         </div>
       </div>
+      {/* novelties */}
       {activeNovelties.length > 0 && (
         <div className="mb-4 space-y-2">
             {activeNovelties.map(novelty => (
@@ -299,23 +229,26 @@ export default function UserAgendaPage() {
             ))}
         </div>
       )}
+      {/* tasks for week */}
       <div className="flex-1 overflow-x-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {daysOfWeek.map(date => {
             const dayName = format(date, 'EEEE', { locale: enUS });
             const spanishDayName = format(date, 'EEEE', { locale: es });
-            const usersForDay = sortedUsersByDay[dayName] || [];
+            const usersForDay = users.filter(user => user.workHours[dayName].active || user.workHours[dayName].virtual);
+            
             const eventsForDay = calendarEvents.filter(event => isWithinInterval(date, { start: new Date(event.start), end: new Date(event.end) }));
             
             return (
               <div key={date.toString()} className="flex flex-col gap-4 border-r-4 border-foreground/20 last:border-r-0 px-2">
+                {/* day header */}
                 <div className="text-center sticky top-0 bg-background py-2">
                     <h2 className="text-xl font-bold font-headline capitalize">
                     {spanishDayName}
                     </h2>
                     <p className="text-sm text-muted-foreground">{format(date, 'd/M')}</p>
                 </div>
-                
+                {/* events for day */}
                  {eventsForDay.length > 0 && (
                     <div className="space-y-2">
                         {eventsForDay.map(event => (
@@ -326,11 +259,16 @@ export default function UserAgendaPage() {
                         ))}
                     </div>
                 )}
-
+                {/* users and tasks for day */}
                 <div className="flex flex-col gap-4">
                   {usersForDay.length > 0 ? usersForDay.map(user => {
                     const workDay = user.workHours?.[dayName as keyof User['workHours']];
-                    const tasksForDay = user.tasksByDay[dayName] || [];
+                    
+                    const tasksForDay = tasks.filter(task => 
+                      task.userId === user.id && 
+                      isWithinInterval(date, { start: new Date(task.startDate), end: new Date(task.endDate ?? new Date(8640000000000000)) })
+                    );
+                    
                     const isDropTarget = dragOverTarget?.userId === user.id && dragOverTarget.day === dayName;
 
                     return (
@@ -349,7 +287,7 @@ export default function UserAgendaPage() {
                               <h3 className="font-semibold">{user.name}</h3>
                               {user.positions.length > 0 && (<p className="text-xs text-muted-foreground">{user.positions.map(p => p.shortName).join(' / ')}</p>)}
                             </div>
-                            {workDay?.active && workDay.start && workDay.end && (<p className="text-xs text-muted-foreground ml-auto">{workDay.start} - {workDay.end}</p>)}
+                            {workDay.active && (<p className="text-xs text-muted-foreground ml-auto">{workDay.start} - {workDay.end}</p>)}
                           </div>
                           <div className="space-y-3 p-2 min-h-[50px]">
                             {tasksForDay.length > 0 ? tasksForDay.map(task => {
@@ -380,17 +318,18 @@ export default function UserAgendaPage() {
                                     <p className="text-xs text-muted-foreground">
                                         {workDay?.active ? 'Disponible para tareas' : 'Sin tareas asignadas'}
                                     </p>
-                                    {canManageTasks && (
-                                        <Link href={`/admin?userId=${user.id}&date=${format(date, 'yyyy-MM-dd')}&day=${englishToDay[dayName as keyof typeof englishToDay]}&from=/`} className="w-full">
-                                            <Button variant="ghost" size="sm" className="w-full mt-2 text-xs">
-                                                <PlusCircle className="mr-2 h-3 w-3" />
-                                                Agregar Tarea
-                                            </Button>
-                                        </Link>
-                                    )}
+                                    
                                 </div>
                               )}
                           </div>
+                          {canManageTasks && (
+                            <div className="flex justify-end">
+                              <Button variant="ghost" size="sm" className="w-full mt-2 text-xs">
+                                <PlusCircle className="mr-2 h-3 w-3" />
+                                Agregar Tarea
+                              </Button>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     );

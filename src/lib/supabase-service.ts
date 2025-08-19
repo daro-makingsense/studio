@@ -18,6 +18,7 @@ export const userService = {
         ...user,
       };
     });
+
     return users;
   },
 
@@ -36,6 +37,7 @@ export const userService = {
       frequentTasks: data.frequent_tasks,
       ...data,
     };
+
     return user;
   },
 
@@ -84,7 +86,24 @@ export const taskService = {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    if (!data) return [];
+
+    const tasks = data.map((task) => {
+      return {
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        status: task.status,
+        userId: task.user_id,
+        startDate: task.start_date,
+        endDate: task.end_date,
+        startTime: task.start_time,
+        notes: task.notes,
+      };
+    });
+
+    return tasks;
   },
 
   async getByUserId(userId: string): Promise<Task[]> {
@@ -95,7 +114,17 @@ export const taskService = {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    if (!data) return [];
+
+    const tasks = data.map((task) => {
+      return {
+        ...task,
+        startDate: task.start_date,
+        endDate: task.end_date,
+        startTime: task.start_time,
+      };
+    });
+    return tasks;
   },
 
   async create(task: Task): Promise<Task> {
