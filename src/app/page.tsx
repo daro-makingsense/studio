@@ -103,7 +103,7 @@ const TaskStatusChanger = ({ task, canChangeStatus }: { task: Task; canChangeSta
 
 export default function UserAgendaPage() {
   const { users, currentUser } = useContext(UserContext);
-  const { tasks, updateTask, calendarEvents, novelties } = useContext(DataContext);
+  const { tasks, updateTask, calendarEvents, novelties, refreshData } = useContext(DataContext);
   const [selectedUser, setSelectedUser] = useState('all');
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<{ userId: string, day: string, date: Date } | null>(null);
@@ -163,6 +163,7 @@ export default function UserAgendaPage() {
     }
     setDraggedTaskId(null);
     setDragOverTarget(null);
+    refreshData();
   };
   
   if (!currentDate) {

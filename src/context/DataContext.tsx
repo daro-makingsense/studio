@@ -19,6 +19,7 @@ type DataContextType = {
   updateNovelty: (novelty: Novelty) => void;
   loading: boolean;
   error: Error | null;
+  refreshData: () => void;
 };
 
 
@@ -39,6 +40,7 @@ export const DataContext = createContext<DataContextType>({
   updateNovelty: () => {},
   loading: true,
   error: null,
+  refreshData: () => {},
 });
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
@@ -49,34 +51,33 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<Error | null>(null);
   const [initialized, setInitialized] = useState(false);
 
-  // Load all data from Supabase on mount
+  const loadData = async () => {
+    try {
+      // Load all data in parallel
+      const [supabaseTasks, supabaseEvents, supabaseNovelties] = await Promise.all([
+        taskService.getAll(),
+        calendarEventService.getAll(),
+        noveltyService.getAll()
+      ]);
+
+      setTasks(supabaseTasks);
+      setCalendarEvents(supabaseEvents);
+      setNovelties(supabaseNovelties);
+      setError(null);
+    } catch (err) {
+      console.error('Error loading data from Supabase:', err);
+      setError(err as Error);
+      // Keep empty arrays if Supabase fails - no fallback to mocked data
+      setTasks([]);
+      setCalendarEvents([]);
+      setNovelties([]);
+    } finally {
+      setInitialized(true);
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Load all data in parallel
-        const [supabaseTasks, supabaseEvents, supabaseNovelties] = await Promise.all([
-          taskService.getAll(),
-          calendarEventService.getAll(),
-          noveltyService.getAll()
-        ]);
-
-        setTasks(supabaseTasks);
-        setCalendarEvents(supabaseEvents);
-        setNovelties(supabaseNovelties);
-        setError(null);
-      } catch (err) {
-        console.error('Error loading data from Supabase:', err);
-        setError(err as Error);
-        // Keep empty arrays if Supabase fails - no fallback to mocked data
-        setTasks([]);
-        setCalendarEvents([]);
-        setNovelties([]);
-      } finally {
-        setInitialized(true);
-        setLoading(false);
-      }
-    };
-
     loadData();
   }, []);
 
@@ -156,7 +157,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         addNovelty,
         updateNovelty,
         loading,
-        error
+        error,
+        refreshData: loadData,
     }}>
       {children}
     </DataContext.Provider>
