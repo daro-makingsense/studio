@@ -98,6 +98,7 @@ export const taskService = {
         userId: task.user_id,
         startDate: task.start_date,
         endDate: task.end_date,
+        days: task.days,
         startTime: task.start_time,
         notes: task.notes,
       };
@@ -128,7 +129,6 @@ export const taskService = {
   },
 
   async create(task: Task): Promise<Task> {
-    // console.log('Creating task:', task);
     const { userId, startDate, endDate, startTime, ...etc } = task;
     const { data, error } = await supabase
       .from('tasks')
@@ -147,9 +147,16 @@ export const taskService = {
   },
 
   async update(id: string, updates: Partial<Task>): Promise<Task> {
+    const { userId, startDate, endDate, startTime, ...etc } = updates;
     const { data, error } = await supabase
       .from('tasks')
-      .update(updates)
+      .update({
+        user_id: userId,
+        start_date: startDate,
+        end_date: endDate,
+        start_time: startTime,
+        ...etc,
+      })
       .eq('id', id)
       .select()
       .single();

@@ -15,24 +15,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Task, User } from '@/types';
+import type { DaysOfWeek, Task, User } from '@/types';
 import { cn } from '@/lib/utils';
 import { User as UserIcon, PlusCircle, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Megaphone, Ellipsis } from 'lucide-react';
 import { UserContext } from '@/context/UserContext';
 import { DataContext } from '@/context/DataContext';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { format, startOfWeek, addDays, subWeeks, addWeeks, isSameDay, isWithinInterval, endOfWeek, isPast, getDay, parse, isAfter } from 'date-fns';
+import { format, startOfWeek, addDays, subWeeks, addWeeks, isWithinInterval, endOfWeek, isSameDay } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-const englishToDay: { [key: string]: string } = {
-  'Monday': 'Lunes',
-  'Tuesday': 'Martes',
-  'Wednesday': 'Miércoles',
-  'Thursday': 'Jueves',
-  'Friday': 'Viernes',
-}
 
 const priorityClasses = {
   high: 'bg-red-100',
@@ -167,9 +158,7 @@ export default function UserAgendaPage() {
       updateTask({
         ...taskToMove,
         userId: targetUserId,
-        days: [], // Clear recurring days
-        startDate: targetDate.toISOString(), // Assign the specific date of the drop target
-        endDate: undefined, // Clear end date on drop
+        startDate: targetDate.toISOString(),
       });
     }
     setDraggedTaskId(null);
@@ -192,6 +181,7 @@ export default function UserAgendaPage() {
        <div className="flex flex-col md:flex-row items-center justify-between pb-4 gap-4">
         <div className="flex items-center gap-4">
           <h1 className="text-3xl font-bold font-headline">Agenda Semanal</h1>
+          
           {/* pagination */}
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setCurrentDate(subWeeks(currentDate, 1))}>
@@ -204,6 +194,7 @@ export default function UserAgendaPage() {
           </div>
           <span className="font-semibold text-muted-foreground capitalize">{weekStart} - {weekEnd}</span>
         </div>
+        
         {/* user selector */}
         <div className="flex items-center space-x-4">
           <Select value={selectedUser} onValueChange={setSelectedUser}>
@@ -215,6 +206,7 @@ export default function UserAgendaPage() {
           </Select>
         </div>
       </div>
+      
       {/* novelties */}
       {activeNovelties.length > 0 && (
         <div className="mb-4 space-y-2">
@@ -241,6 +233,7 @@ export default function UserAgendaPage() {
             
             return (
               <div key={date.toString()} className="flex flex-col gap-4 border-r-4 border-foreground/20 last:border-r-0 px-2">
+                
                 {/* day header */}
                 <div className="text-center sticky top-0 bg-background py-2">
                     <h2 className="text-xl font-bold font-headline capitalize">
@@ -248,6 +241,7 @@ export default function UserAgendaPage() {
                     </h2>
                     <p className="text-sm text-muted-foreground">{format(date, 'd/M')}</p>
                 </div>
+                
                 {/* events for day */}
                  {eventsForDay.length > 0 && (
                     <div className="space-y-2">
@@ -259,16 +253,25 @@ export default function UserAgendaPage() {
                         ))}
                     </div>
                 )}
+
                 {/* users and tasks for day */}
                 <div className="flex flex-col gap-4">
                   {usersForDay.length > 0 ? usersForDay.map(user => {
                     const workDay = user.workHours?.[dayName as keyof User['workHours']];
                     
-                    const tasksForDay = tasks.filter(task => 
-                      task.userId === user.id && 
-                      isWithinInterval(date, { start: new Date(task.startDate), end: new Date(task.endDate ?? new Date(8640000000000000)) })
-                    );
-                    
+                    const userTasks = tasks.filter(task => {
+                      if (task.userId === user.id) {
+                        // tareas asignadas para el dia
+                        if (task.days && task.days.length > 0) {
+                          return task.days.includes(dayName as DaysOfWeek);
+                        }
+                        // sacar tareas completadas si ya paso el deadline
+                        if (task.status === 'done' && task.endDate && date > new Date(task.endDate)) return false;
+                        
+                        return date >= new Date(task.startDate);
+                      };
+                    });
+
                     const isDropTarget = dragOverTarget?.userId === user.id && dragOverTarget.day === dayName;
 
                     return (
@@ -288,10 +291,12 @@ export default function UserAgendaPage() {
                               {user.positions.length > 0 && (<p className="text-xs text-muted-foreground">{user.positions.map(p => p.shortName).join(' / ')}</p>)}
                             </div>
                             {workDay.active && (<p className="text-xs text-muted-foreground ml-auto">{workDay.start} - {workDay.end}</p>)}
+                            {workDay.virtual && (<p className="text-xs text-muted-foreground ml-auto">Virtual</p>)}
                           </div>
                           <div className="space-y-3 p-2 min-h-[50px]">
-                            {tasksForDay.length > 0 ? tasksForDay.map(task => {
+                            {userTasks.length > 0 ? userTasks.map(task => {
                                 const canChangeStatus = canManageTasks || currentUser?.id === task.userId;
+                                // task card
                                 return (
                                   <div
                                     key={task.id}
