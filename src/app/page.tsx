@@ -24,6 +24,8 @@ import { Button } from '@/components/ui/button';
 import { format, startOfWeek, addDays, subWeeks, addWeeks, isWithinInterval, endOfWeek, isSameDay } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import CreateTaskModal from '@/components/create-task-modal';
 
 const priorityClasses = {
   high: 'bg-red-100',
@@ -108,6 +110,8 @@ export default function UserAgendaPage() {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<{ userId: string, day: string, date: Date } | null>(null);
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [taskStartDate, setTaskStartDate] = useState<Date>();
 
   useEffect(() => {
     // Set initial date on client to avoid hydration mismatch
@@ -330,7 +334,10 @@ export default function UserAgendaPage() {
                           </div>
                           {canManageTasks && (
                             <div className="flex justify-end">
-                              <Button variant="ghost" size="sm" className="w-full mt-2 text-xs">
+                              <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => {
+                                setIsTaskModalOpen(true);
+                                setTaskStartDate(date);
+                              }}>
                                 <PlusCircle className="mr-2 h-3 w-3" />
                                 Agregar Tarea
                               </Button>
@@ -350,6 +357,12 @@ export default function UserAgendaPage() {
           })}
         </div>
       </div>
+
+      <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
+        <DialogContent>
+          <CreateTaskModal closeDialog={() => setIsTaskModalOpen(false)} startDate={taskStartDate}/>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
