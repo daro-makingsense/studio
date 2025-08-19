@@ -154,12 +154,12 @@ export default function UserAgendaPage() {
 
   const handleDragLeave = () => setDragOverTarget(null);
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetUserId: string, targetDay: string, targetDate: Date) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, targetUserId: string, targetDay: string, targetDate: Date) => {
     e.preventDefault();
     if (!canManageTasks || !draggedTaskId) return;
     const taskToMove = tasks.find(t => t.id === draggedTaskId);
     if (taskToMove) {
-      updateTask({
+      await updateTask({
         ...taskToMove,
         userId: targetUserId,
         startDate: targetDate.toISOString(),

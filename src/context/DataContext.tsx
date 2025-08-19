@@ -8,7 +8,7 @@ type DataContextType = {
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   addTask: (task: Task) => void;
-  updateTask: (task: Task) => void;
+  updateTask: (task: Task) => Promise<void>;
   deleteTask: (taskId: string) => void;
   calendarEvents: CalendarEvent[];
   setCalendarEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>;
@@ -29,7 +29,7 @@ export const DataContext = createContext<DataContextType>({
   tasks: [],
   setTasks: () => {},
   addTask: () => {},
-  updateTask: () => {},
+  updateTask: () => Promise.resolve(),
   deleteTask: () => {},
   calendarEvents: [],
   setCalendarEvents: () => {},
