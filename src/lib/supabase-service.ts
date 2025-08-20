@@ -42,28 +42,55 @@ export const userService = {
   },
 
   async create(user: User): Promise<User> {
+    const { workHours, frequentTasks, ...rest } = user as unknown as any;
+    const insertPayload = {
+      ...rest,
+      // allow passing email alongside User shape
+      work_hours: workHours,
+      frequent_tasks: frequentTasks,
+    };
+
     const { data, error } = await supabase
       .from('users')
-      .insert({
-        ...user,
-      })
+      .insert(insertPayload)
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+
+    const createdUser: User = {
+      workHours: (data as any).work_hours,
+      frequentTasks: (data as any).frequent_tasks,
+      ...data,
+    };
+
+    return createdUser;
   },
 
   async update(id: string, updates: Partial<User>): Promise<User> {
+    const { workHours, frequentTasks, ...rest } = updates as unknown as any;
+    const updatePayload = {
+      ...rest,
+      ...(typeof workHours !== 'undefined' ? { work_hours: workHours } : {}),
+      ...(typeof frequentTasks !== 'undefined' ? { frequent_tasks: frequentTasks } : {}),
+    };
+
     const { data, error } = await supabase
       .from('users')
-      .update(updates)
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+
+    const updatedUser: User = {
+      workHours: (data as any).work_hours,
+      frequentTasks: (data as any).frequent_tasks,
+      ...data,
+    };
+
+    return updatedUser;
   },
 
   async upsertMany(users: User[]): Promise<User[]> {
