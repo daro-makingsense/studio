@@ -1,3 +1,7 @@
+export type DaysOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+export type TaskPriority = 'high' | 'medium' | 'low';
+export type TaskStatus = 'todo' | 'in-progress' | 'done' | 'archived';
+
 export type WorkDay = {
   active: boolean;
   virtual: boolean;
@@ -25,13 +29,13 @@ export type Task = {
   title: string;
   description: string;
   userId: string;
-  days?: ('Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday')[];
-  startDate?: string;
+  days?: DaysOfWeek[];
+  startDate: string;
   endDate?: string;
   startTime?: string; // "HH:mm"
   duration?: number; // in minutes
-  priority: 'high' | 'medium' | 'low';
-  status: 'todo' | 'in-progress' | 'done' | 'archived';
+  priority: TaskPriority;
+  status: TaskStatus;
   notes?: string;
 };
 

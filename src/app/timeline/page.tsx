@@ -306,8 +306,9 @@ const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
   }, [tasks, selectedDate, dayIndex]);
 
   const usersForDay = useMemo(() => {
+    console.debug('usersForDay', users);
     return users.filter(user => {
-      const workDay = user.workHours[dayKey as keyof typeof user.workHours];
+      const workDay = user.workHours[dayKey];
       const hasTasks = tasksForDay.some(t => t.userId === user.id);
       return workDay?.active || hasTasks;
     }).sort((a,b) => a.name.localeCompare(b.name));
@@ -434,10 +435,10 @@ const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
        <div className="sticky top-0 z-20 bg-background">
         <div className="grid" style={{ gridTemplateColumns }}>
           {/* Header section */}
-          <div className="h-28 p-2 text-center border-b border-r"></div>
-          <div className="h-28 p-2 text-center border-b border-r"></div>
+          <div className="sticky left-0 z-30 h-28 border-b border-r bg-background p-2 text-center"></div>
+          <div className="sticky left-[60px] z-30 h-28 border-b border-r bg-background p-2 text-center"></div>
           {usersForDay.map(user => (
-            <div key={user.id} className="h-28 flex flex-col items-center justify-center p-2 text-center border-b border-r relative">
+            <div key={user.id} className="relative h-28 flex flex-col items-center justify-center border-b border-r p-2 text-center">
               <UserIcon className="h-5 w-5 mb-1 shrink-0" style={{ color: user.color }} />
               <div className="font-semibold text-sm">{user.name}</div>
               <div className="text-xs text-muted-foreground">{user.positions.map(p => p.shortName).join(' / ')}</div>
@@ -465,7 +466,7 @@ const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
            </div>
         )}
       </div>
-      <div className="overflow-auto">
+      <div>
         <div className="grid" style={{ gridTemplateColumns, position: 'relative' }}>
           <div className="sticky left-0 z-10 bg-background"><TimeRuler activeSlots={activeSlots}/></div>
           <div className="sticky left-[60px] z-10 bg-background"><ShiftColumn totalHeight={totalHeight} activeSlots={activeSlots}/></div>
@@ -651,7 +652,7 @@ export default function TimelinePage() {
         </div>
        )}
       <Card className="flex-grow flex flex-col">
-        <CardContent className="p-0 flex-grow relative overflow-hidden flex flex-col">
+        <CardContent className="p-0 flex-grow relative overflow-auto flex flex-col">
             {selectedDate && <DailyTimeline selectedDate={selectedDate} />}
         </CardContent>
       </Card>
