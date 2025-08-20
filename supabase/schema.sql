@@ -1,6 +1,7 @@
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
+  email TEXT UNIQUE,
   name TEXT NOT NULL,
   positions JSONB DEFAULT '[]',
   role TEXT CHECK (role IN ('owner', 'admin', 'user')) NOT NULL,

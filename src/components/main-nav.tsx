@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils"
 import { UserContext } from "@/context/UserContext"
 
 const navItems = [
-  { href: "/", label: "Agenda Semanal", icon: LayoutGrid },
+  { href: "/canvas", label: "Agenda Semanal", icon: LayoutGrid },
   { href: "/timeline", label: "Cronograma Diario", icon: Clock },
   { href: "/tasks", label: "Tareas", icon: ListTodo },
   { href: "/calendar", label: "Calendario", icon: Calendar },
@@ -40,7 +40,7 @@ export function MainNav() {
   return (
     <>
       <SidebarHeader>
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/canvas" className="flex items-center gap-2">
           <Briefcase className="h-6 w-6 text-primary" />
           <span className="text-lg font-semibold font-headline text-sidebar-foreground">
             Task Canvas
@@ -55,20 +55,20 @@ export function MainNav() {
           }
           return (
             <SidebarMenuItem key={item.href}>
-              <Link href={item.href}>
-                <SidebarMenuButton
-                  isActive={pathname === item.href}
-                  className="w-full justify-start"
-                  tooltip={{
-                    children: item.label,
-                    className: "bg-background text-foreground",
-                  }}
-                  as="a"
-                >
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === item.href}
+                className="w-full justify-start"
+                tooltip={{
+                  children: item.label,
+                  className: "bg-background text-foreground",
+                }}
+              >
+                <Link href={item.href}>
                   <item.icon className="h-4 w-4" />
                   <span>{item.label}</span>
-                </SidebarMenuButton>
-              </Link>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           )
         })}

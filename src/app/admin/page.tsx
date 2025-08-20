@@ -71,6 +71,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useSession } from 'next-auth/react';
 
 
 // --- SECCIÓN DE GESTIÓN DE TAREAS (ADMIN) ---
@@ -500,7 +501,7 @@ function TaskCreatorForm({ closeDialog }: { closeDialog: () => void }) {
     const newTask: Task = {
       id: `task-${Date.now()}`,
       ...values,
-      startDate: values.startDate?.toISOString(),
+      startDate: values.startDate ? values.startDate.toISOString() : new Date().toISOString(),
       endDate: values.endDate?.toISOString(),
       days: values.days as Task['days'] || [],
       description: values.description || '',
@@ -1607,7 +1608,11 @@ function NoveltiesManager({ canManageNovelties }: { canManageNovelties: boolean 
 export default function AdminPage() {
     const { currentUser } = useContext(UserContext);
     const [isClient, setIsClient] = useState(false);
+    const { data: session, status } = useSession()
 
+    if (status === 'loading') return <p>Loading...</p>
+    if (session && session.user && !(session.user.role === 'admin' || session.user.role === 'owner')) return <p>Acceso denegado</p>
+    console.log('session', session) 
     useEffect(() => {
         setIsClient(true);
     }, []);

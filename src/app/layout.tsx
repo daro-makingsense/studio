@@ -10,8 +10,10 @@ import { Header } from '@/components/header';
 import { UserProvider, UserContext } from '@/context/UserContext';
 import { DataProvider, DataContext } from '@/context/DataContext';
 import React, { useContext } from 'react';
+import { SessionProvider } from 'next-auth/react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SupabaseError } from '@/components/SupabaseError';
+import { usePathname } from 'next/navigation';
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const { loading: userLoading, error: userError } = useContext(UserContext);
@@ -58,6 +60,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const isAuthRoute = pathname === '/login' || pathname === '/';
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
@@ -75,11 +79,20 @@ export default function RootLayout({
           'min-h-screen bg-background font-body antialiased'
         )}
       >
-        <UserProvider>
-          <DataProvider>
-            <AppLayout>{children}</AppLayout>
-          </DataProvider>
-        </UserProvider>
+        {isAuthRoute ? (
+          <>
+            {children}
+            <Toaster />
+          </>
+        ) : (
+          <SessionProvider>
+            <UserProvider>
+              <DataProvider>
+                <AppLayout>{children}</AppLayout>
+              </DataProvider>
+            </UserProvider>
+          </SessionProvider>
+        )}
       </body>
     </html>
   );
