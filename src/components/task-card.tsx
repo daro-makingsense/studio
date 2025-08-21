@@ -140,7 +140,7 @@ export function TaskCard({
       
       {task.startTime && (
         <p className="text-xs font-semibold text-gray-800/90">
-          {task.startTime} {task.duration && `- (${task.duration} m)`}
+          {`Inicio: ${task.startTime}`} {task.duration && ` (Duración: ${task.duration}m)`}
         </p>
       )}
       

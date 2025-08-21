@@ -604,7 +604,7 @@ export default function TimelinePage() {
       </Card>
 
       <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           {taskUserId && <CreateTaskModal closeDialog={() => setIsTaskModalOpen(false)} startDate={taskStartDate} userId={taskUserId} />}
         </DialogContent>
       </Dialog>
