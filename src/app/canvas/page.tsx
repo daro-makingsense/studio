@@ -106,6 +106,7 @@ export default function UserAgendaPage() {
   const { users, currentUser } = useContext(UserContext);
   const { tasks, updateTask, calendarEvents, novelties, markNoveltyAsViewed, refreshData } = useContext(DataContext);
   const [selectedUser, setSelectedUser] = useState('all');
+  const [taskModalUserId, setTaskModalUserId] = useState<string>('');
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<{ userId: string, day: string, date: Date } | null>(null);
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
@@ -323,7 +324,7 @@ export default function UserAgendaPage() {
                               <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => {
                                 setIsTaskModalOpen(true);
                                 setTaskStartDate(date);
-                                setSelectedUser(user.id);
+                                setTaskModalUserId(user.id);
                               }}>
                                 <PlusCircle className="mr-2 h-3 w-3" />
                                 Agregar Tarea
@@ -346,10 +347,10 @@ export default function UserAgendaPage() {
       </div>
 
       <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <CreateTaskModal 
             startDate={taskStartDate}
-            userId={selectedUser}
+            userId={taskModalUserId}
             closeDialog={() => setIsTaskModalOpen(false)}
           />
         </DialogContent>
