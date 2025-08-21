@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS novelties (
   description TEXT,
   start TEXT NOT NULL,
   "end" TEXT NOT NULL,
+  viewed TEXT[] DEFAULT '{}',
   updated_at TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );

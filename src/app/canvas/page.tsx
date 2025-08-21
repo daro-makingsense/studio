@@ -17,15 +17,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { DaysOfWeek, Task, User } from '@/types';
 import { cn } from '@/lib/utils';
-import { User as UserIcon, PlusCircle, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Megaphone, Ellipsis } from 'lucide-react';
+import { User as UserIcon, PlusCircle, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Ellipsis } from 'lucide-react';
 import { UserContext } from '@/context/UserContext';
 import { DataContext } from '@/context/DataContext';
 import { Button } from '@/components/ui/button';
 import { format, startOfWeek, addDays, subWeeks, addWeeks, isWithinInterval, endOfWeek, isSameDay } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CreateTaskModal from '@/components/create-task-modal';
+import NoveltyBanner from '@/components/novelty-banner';
 
 const priorityClasses = {
   high: 'bg-red-100',
@@ -104,7 +104,7 @@ const TaskStatusChanger = ({ task, canChangeStatus }: { task: Task; canChangeSta
 
 export default function UserAgendaPage() {
   const { users, currentUser } = useContext(UserContext);
-  const { tasks, updateTask, calendarEvents, novelties, refreshData } = useContext(DataContext);
+  const { tasks, updateTask, calendarEvents, novelties, markNoveltyAsViewed, refreshData } = useContext(DataContext);
   const [selectedUser, setSelectedUser] = useState('all');
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<{ userId: string, day: string, date: Date } | null>(null);
@@ -124,19 +124,7 @@ export default function UserAgendaPage() {
     return Array.from({ length: 5 }).map((_, i) => addDays(start, i));
   }, [currentDate]);
 
-  const activeNovelties = useMemo(() => {
-    if (!currentDate) return [];
-    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-    
-    return novelties.filter(n => {
-        const noveltyInterval = { start: new Date(n.start), end: new Date(n.end) };
-        const weekInterval = { start: weekStart, end: weekEnd };
 
-        // Check for overlap between novelty interval and week interval
-        return noveltyInterval.start <= weekInterval.end && noveltyInterval.end >= weekInterval.start;
-    });
-  }, [novelties, currentDate]);
 
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, taskId: string) => {
@@ -187,19 +175,13 @@ export default function UserAgendaPage() {
        </div>
       
       {/* novelties */}
-      {activeNovelties.length > 0 && (
-        <div className="mb-4 space-y-2">
-            {activeNovelties.map(novelty => (
-                <Alert key={novelty.id} className="bg-blue-50 border-blue-200">
-                    <Megaphone className="h-4 w-4 !text-blue-600" />
-                    <AlertTitle className="text-blue-800">{novelty.title}</AlertTitle>
-                    <AlertDescription className="text-blue-700">
-                        {novelty.description}
-                    </AlertDescription>
-                </Alert>
-            ))}
-        </div>
-      )}
+      <NoveltyBanner 
+        novelties={novelties} 
+        currentDate={currentDate} 
+        currentUser={currentUser}
+        onDismiss={markNoveltyAsViewed}
+        mode="week" 
+      />
       
       {/* Navigation and user selector on same line */}
       <div className="flex items-center justify-between pb-4 gap-4">

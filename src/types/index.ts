@@ -56,5 +56,6 @@ export type Novelty = {
   description?: string;
   start: string;
   end: string;
+  viewed?: string[];
   updatedAt?: string;
 };

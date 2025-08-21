@@ -359,5 +359,31 @@ export const noveltyService = {
     
     if (error) throw error;
     return data || [];
+  },
+
+  async markAsViewed(noveltyId: string, userId: string): Promise<Novelty> {
+    // First get the current novelty to add the user ID to the viewed array
+    const { data: currentNovelty, error: fetchError } = await supabase
+      .from('novelties')
+      .select('viewed')
+      .eq('id', noveltyId)
+      .single();
+    
+    if (fetchError) throw fetchError;
+    
+    const currentViewed = currentNovelty?.viewed || [];
+    const updatedViewed = currentViewed.includes(userId) 
+      ? currentViewed 
+      : [...currentViewed, userId];
+
+    const { data, error } = await supabase
+      .from('novelties')
+      .update({ viewed: updatedViewed })
+      .eq('id', noveltyId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 };

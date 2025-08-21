@@ -8,11 +8,10 @@ import { DataContext } from '@/context/DataContext';
 import type { Task, User } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { User as UserIcon, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Megaphone, Ellipsis, PlusCircle } from 'lucide-react';
+import { User as UserIcon, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Ellipsis, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
@@ -22,6 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CreateTaskModal from '@/components/create-task-modal';
+import NoveltyBanner from '@/components/novelty-banner';
 
 
 const priorityClasses = {
@@ -484,8 +484,8 @@ const DailyTimeline = ({ selectedDate, onAddTask }: { selectedDate: Date, onAddT
 
 export default function TimelinePage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const { users } = useContext(UserContext);
-  const { tasks, calendarEvents, novelties } = useContext(DataContext);
+  const { users, currentUser } = useContext(UserContext);
+  const { tasks, calendarEvents, novelties, markNoveltyAsViewed } = useContext(DataContext);
   const [isClient, setIsClient] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskStartDate, setTaskStartDate] = useState<Date>();
@@ -533,12 +533,7 @@ export default function TimelinePage() {
     setSelectedDate(initialDate);
   }, [hasActivity]);
   
-  const activeNovelties = useMemo(() => {
-    if (!selectedDate) return [];
-    return novelties.filter(n => 
-        isWithinInterval(selectedDate, { start: new Date(n.start), end: new Date(n.end) })
-    );
-  }, [novelties, selectedDate]);
+
 
   const handleNextDay = () => {
     if (!selectedDate) return;
@@ -614,19 +609,13 @@ export default function TimelinePage() {
        </div>
 
       {/* Novelties section */}
-      {activeNovelties.length > 0 && (
-        <div className="mb-4 space-y-2">
-            {activeNovelties.map(novelty => (
-                <Alert key={novelty.id} className="bg-blue-50 border-blue-200">
-                    <Megaphone className="h-4 w-4 !text-blue-600" />
-                    <AlertTitle className="text-blue-800">{novelty.title}</AlertTitle>
-                    <AlertDescription className="text-blue-700">
-                        {novelty.description}
-                    </AlertDescription>
-                </Alert>
-            ))}
-        </div>
-       )}
+      <NoveltyBanner 
+        novelties={novelties} 
+        currentDate={selectedDate} 
+        currentUser={currentUser}
+        onDismiss={markNoveltyAsViewed}
+        mode="day" 
+      />
 
        {/* Date and navigation aligned to left */}
        <div className="flex items-center justify-start gap-2 pb-4">

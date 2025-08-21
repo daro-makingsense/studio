@@ -10,7 +10,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Calendar as CalendarIcon, Megaphone } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Edit, Calendar as CalendarIcon, Megaphone, Trash2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -141,8 +142,9 @@ function EditNoveltyForm({ novelty, onUpdate, closeDialog }: { novelty: Novelty,
 }
 
 export default function NoveltiesManager({ canManageNovelties }: { canManageNovelties: boolean }) {
-  const { novelties, addNovelty, updateNovelty } = React.useContext(DataContext);
+  const { novelties, addNovelty, updateNovelty, deleteNovelty } = React.useContext(DataContext);
   const [editingNovelty, setEditingNovelty] = React.useState<Novelty | null>(null);
+  const [deletingNovelty, setDeletingNovelty] = React.useState<Novelty | null>(null);
 
   const form = useForm<z.infer<typeof noveltyFormSchema>>({
     resolver: zodResolver(noveltyFormSchema),
@@ -168,6 +170,19 @@ export default function NoveltiesManager({ canManageNovelties }: { canManageNove
   const handleUpdateNovelty = (updatedNovelty: Novelty) => {
     updateNovelty(updatedNovelty);
     setEditingNovelty(null);
+  };
+
+  const handleDeleteNovelty = async () => {
+    if (deletingNovelty) {
+      try {
+        await deleteNovelty(deletingNovelty.id);
+        setDeletingNovelty(null);
+        alert('¡Novedad eliminada exitosamente!');
+      } catch (error) {
+        console.error('Error deleting novelty:', error);
+        alert('Error al eliminar la novedad. Por favor, intenta de nuevo.');
+      }
+    }
   };
 
   return (
@@ -272,12 +287,12 @@ export default function NoveltiesManager({ canManageNovelties }: { canManageNove
                     <AlertTitle className="text-blue-800">{novelty.title}</AlertTitle>
                     <AlertDescription className="text-blue-700">
                       <p>{novelty.description}</p>
-                      <p className="text-xs mt-2 text-blue-600 font-medium">
+                      <p className="text-xs mt-2 font-medium text-muted-foreground">
                         Vigente del {format(new Date(novelty.start), 'dd/MM/yyyy')} al {format(new Date(novelty.end), 'dd/MM/yyyy')}
                       </p>
                     </AlertDescription>
                     {canManageNovelties && (
-                      <div className="absolute top-2 right-2 z-10 flex items-center justify-center">
+                      <div className="absolute top-2 right-2 z-10 flex items-center justify-center gap-1">
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -285,6 +300,14 @@ export default function NoveltiesManager({ canManageNovelties }: { canManageNove
                           onClick={() => setEditingNovelty(novelty)}
                         >
                           <Edit className="h-4 w-4 text-blue-700" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 hover:bg-red-100 hover:text-red-800" 
+                          onClick={() => setDeletingNovelty(novelty)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
                       </div>
                     )}
@@ -313,6 +336,28 @@ export default function NoveltiesManager({ canManageNovelties }: { canManageNove
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletingNovelty} onOpenChange={(isOpen) => !isOpen && setDeletingNovelty(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La novedad "{deletingNovelty?.title}" será eliminada permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeletingNovelty(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteNovelty}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
