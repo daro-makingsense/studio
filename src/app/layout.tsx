@@ -40,7 +40,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="relative flex min-h-screen w-full">
-        <Sidebar className="flex-col border-r">
+        <Sidebar className="flex-col border-r" collapsible="icon">
           <MainNav />
         </Sidebar>
         <SidebarInset className="flex flex-col">

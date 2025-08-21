@@ -9,6 +9,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import {
   LayoutGrid,
@@ -19,13 +20,15 @@ import {
   Clock,
   Briefcase,
   Megaphone,
+  SquareKanban,
+  LayoutDashboard,
 } from "lucide-react"
 import { UserNav } from "./user-nav"
 import { cn } from "@/lib/utils"
 import { UserContext } from "@/context/UserContext"
 
 const navItems = [
-  { href: "/canvas", label: "Agenda Semanal", icon: LayoutGrid },
+  { href: "/canvas", label: "Agenda Semanal", icon: SquareKanban },
   { href: "/timeline", label: "Cronograma Diario", icon: Clock },
   { href: "/calendar", label: "Calendario", icon: Calendar },
   { href: "/tasks", label: "Tareas", icon: ListTodo, adminOnly: true },
@@ -40,12 +43,15 @@ export function MainNav() {
   return (
     <>
       <SidebarHeader>
-        <Link href="/canvas" className="flex items-center gap-2">
-          <Briefcase className="h-6 w-6 text-primary" />
-          <span className="text-lg font-semibold font-headline text-sidebar-foreground">
+        <div className="flex items-center justify-between">
+          <SidebarTrigger className="ml-auto" />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-semibold font-headline group-data-[collapsible=icon]:hidden">
             Task Canvas
           </span>
-        </Link>
+          <LayoutDashboard className="h-6 w-6 text-primary group-data-[collapsible=icon]:hidden" />
+        </div>
       </SidebarHeader>
 
       <SidebarMenu className="flex-1 p-2">
