@@ -33,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import type { CalendarEvent } from '@/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 
 const currentUserId = 'user-1';
 
@@ -52,6 +53,7 @@ export default function CalendarPage() {
   const { calendarEvents, addCalendarEvent } = React.useContext(DataContext);
   const currentUser = users.find(u => u.id === currentUserId);
   const canEditCalendar = currentUser?.role === 'admin' || currentUser?.role === 'owner';
+  const { toast } = useToast();
 
   const [currentDate, setCurrentDate] = React.useState<Date | null>(null);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -98,7 +100,11 @@ export default function CalendarPage() {
       end: values.end.toISOString(),
     };
     addCalendarEvent(newEvent);
-    alert("¡Evento creado exitosamente!");
+    toast({
+      variant: "success",
+      title: "¡Éxito!",
+      description: "¡Evento creado exitosamente!",
+    });
     setIsFormOpen(false);
     form.reset();
   }

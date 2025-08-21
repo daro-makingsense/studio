@@ -19,6 +19,7 @@ import { DataContext } from '@/context/DataContext';
 import type { Novelty } from '@/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 import { es } from 'date-fns/locale';
 
 const noveltyFormSchema = z.object({
@@ -145,6 +146,7 @@ export default function NoveltiesManager({ canManageNovelties }: { canManageNove
   const { novelties, addNovelty, updateNovelty, deleteNovelty } = React.useContext(DataContext);
   const [editingNovelty, setEditingNovelty] = React.useState<Novelty | null>(null);
   const [deletingNovelty, setDeletingNovelty] = React.useState<Novelty | null>(null);
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof noveltyFormSchema>>({
     resolver: zodResolver(noveltyFormSchema),
@@ -163,7 +165,11 @@ export default function NoveltiesManager({ canManageNovelties }: { canManageNove
       end: values.date.to.toISOString(),
     };
     addNovelty(newNovelty);
-    alert('¡Novedad creada exitosamente!');
+    toast({
+      variant: "success",
+      title: "¡Éxito!",
+      description: "¡Novedad creada exitosamente!",
+    });
     form.reset();
   }
 
@@ -177,10 +183,18 @@ export default function NoveltiesManager({ canManageNovelties }: { canManageNove
       try {
         await deleteNovelty(deletingNovelty.id);
         setDeletingNovelty(null);
-        alert('¡Novedad eliminada exitosamente!');
+        toast({
+          variant: "success",
+          title: "¡Éxito!",
+          description: "¡Novedad eliminada exitosamente!",
+        });
       } catch (error) {
         console.error('Error deleting novelty:', error);
-        alert('Error al eliminar la novedad. Por favor, intenta de nuevo.');
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al eliminar la novedad. Por favor, intenta de nuevo.",
+        });
       }
     }
   };

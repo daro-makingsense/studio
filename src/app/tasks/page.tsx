@@ -72,6 +72,7 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useSession } from 'next-auth/react';
+import { useToast } from '@/hooks/use-toast';
 
 
 const priorityVariant = {
@@ -483,6 +484,7 @@ const newTaskFormSchema = z.object({
 function TaskCreatorForm({ closeDialog }: { closeDialog: () => void }) {
   const { users } = useContext(UserContext);
   const { addTask } = useContext(DataContext);
+  const { toast } = useToast();
   
   const form = useForm<z.infer<typeof newTaskFormSchema>>({
     resolver: zodResolver(newTaskFormSchema),
@@ -509,11 +511,19 @@ function TaskCreatorForm({ closeDialog }: { closeDialog: () => void }) {
     };
     try {
       await addTask(newTask);
-      alert('¡Tarea creada exitosamente!');
+      toast({
+        variant: "success",
+        title: "¡Éxito!",
+        description: "¡Tarea creada exitosamente!",
+      });
       closeDialog();
     } catch (error) {
       console.error('Error creating task:', error);
-      alert('Error al crear la tarea. Por favor, inténtalo de nuevo.');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al crear la tarea. Por favor, inténtalo de nuevo.",
+      });
     }
   }
   

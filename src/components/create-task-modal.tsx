@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 const weekDays: { id: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday", label: string }[] = [
     { id: 'Monday', label: 'Lunes' },
@@ -59,6 +60,7 @@ const newTaskFormSchema = z.object({
 export default function CreateTaskModal({ closeDialog, startDate, userId }: { closeDialog: () => void, startDate: Date | undefined, userId: string }) {
     const { users } = useContext(UserContext);
     const { addTask, refreshData } = useContext(DataContext);
+    const { toast } = useToast();
     
     const form = useForm<z.infer<typeof newTaskFormSchema>>({
       resolver: zodResolver(newTaskFormSchema),
@@ -87,12 +89,20 @@ export default function CreateTaskModal({ closeDialog, startDate, userId }: { cl
       };
       try {
         await addTask(newTask);
-        alert('¡Tarea creada exitosamente!');
+        toast({
+          variant: "success",
+          title: "¡Éxito!",
+          description: "¡Tarea creada exitosamente!",
+        });
         closeDialog();
         refreshData();
       } catch (error) {
         console.error('Error creating task:', error);
-        alert('Error al crear la tarea. Por favor, inténtalo de nuevo.');
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al crear la tarea. Por favor, inténtalo de nuevo.",
+        });
       }
     }
     

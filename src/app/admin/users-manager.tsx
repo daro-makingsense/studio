@@ -18,6 +18,7 @@ import type { User } from '@/types';
 import { UserContext } from '@/context/UserContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { userService } from '@/lib/supabase-service';
+import { useToast } from '@/hooks/use-toast';
 
 const timeRegex = /^(?:2[0-3]|[01]?[0-9]):[0-5][0-9]$/;
 
@@ -57,6 +58,7 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 function UserProfileForm({ user, onUpdate, canEdit }: { user: User, onUpdate: (values: User) => void, canEdit: boolean }) {
+  const { toast } = useToast();
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
          defaultValues: {
@@ -101,7 +103,11 @@ function UserProfileForm({ user, onUpdate, canEdit }: { user: User, onUpdate: (v
         ) as { [key: string]: any }),
     };
     onUpdate(updatedUser);
-    alert('¡Perfil actualizado exitosamente!');
+    toast({
+      variant: "success",
+      title: "¡Éxito!",
+      description: "¡Perfil actualizado exitosamente!",
+    });
   }
 
   const workDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -356,6 +362,7 @@ export default function UsersManager({ canManageUsers }: { canManageUsers: boole
   const { users, setUsers } = React.useContext(UserContext);
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [newUserDraft, setNewUserDraft] = React.useState<User | null>(null);
+  const { toast } = useToast();
 
   const handleUpdateUser = (updatedUser: User) => {
     setUsers(currentUsers => currentUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
@@ -392,7 +399,11 @@ export default function UsersManager({ canManageUsers }: { canManageUsers: boole
         setNewUserDraft(null);
       } catch (error) {
         console.error('Failed to create user', error);
-        alert('No se pudo crear el usuario');
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudo crear el usuario",
+        });
       }
   };
 
