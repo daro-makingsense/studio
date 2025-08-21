@@ -61,7 +61,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isAuthRoute = pathname === '/login' || pathname === '/';
+  const isAuthRoute = pathname === '/login';
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
