@@ -267,7 +267,7 @@ export default function NoveltiesManager({ canManageNovelties }: { canManageNove
               [...novelties]
                 .sort((a,b) => new Date(b.start).getTime() - new Date(a.start).getTime())
                 .map(novelty => (
-                  <Alert key={novelty.id} className="bg-blue-50 border-blue-200 relative pr-10">
+                  <Alert key={novelty.id} className="bg-blue-50 border-blue-200 relative pr-12">
                     <Megaphone className="h-4 w-4 !text-blue-600" />
                     <AlertTitle className="text-blue-800">{novelty.title}</AlertTitle>
                     <AlertDescription className="text-blue-700">
@@ -277,9 +277,16 @@ export default function NoveltiesManager({ canManageNovelties }: { canManageNove
                       </p>
                     </AlertDescription>
                     {canManageNovelties && (
-                      <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => setEditingNovelty(novelty)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="absolute top-2 right-2 z-10 flex items-center justify-center">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 hover:bg-blue-100 hover:text-blue-800" 
+                          onClick={() => setEditingNovelty(novelty)}
+                        >
+                          <Edit className="h-4 w-4 text-blue-700" />
+                        </Button>
+                      </div>
                     )}
                   </Alert>
                 ))

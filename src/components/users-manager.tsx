@@ -42,16 +42,15 @@ const profileFormSchema = z.object({
       for (const day in data) {
           const { active, start, end } = (data as any)[day];
           if (active) {
-            if ((start && !end) || (!start && end)) return false;
-            if (start && end) {
-              if(!timeRegex.test(start) || !timeRegex.test(end)) return false;
-              if (start >= end) return false;
-            }
+            // Require both start and end times when day is active
+            if (!start || !end) return false;
+            if (!timeRegex.test(start) || !timeRegex.test(end)) return false;
+            if (start >= end) return false;
           }
       }
       return true;
   }, {
-      message: "Si un día está activo, la hora de inicio debe ser anterior a la hora de finalización. Ambas deben ser horas válidas o estar en blanco."
+      message: "Si un día está activo, debe tener tanto hora de inicio como hora de finalización válidas, y la hora de inicio debe ser anterior a la de finalización."
   }),
 });
 
@@ -62,7 +61,7 @@ function UserProfileForm({ user, onUpdate, canEdit }: { user: User, onUpdate: (v
     resolver: zodResolver(profileFormSchema),
          defaultValues: {
        ...user,
-       email: user.email || `${user.name.split(' ')[0].toLowerCase()}@taskcanvas.com`,
+       email: user.email || '',
       frequentTasks: user.frequentTasks.join('\n'),
       workHours: {
         Monday: { active: user.workHours.Monday?.active || false, virtual: user.workHours.Monday?.virtual || false, start: user.workHours.Monday?.start || '', end: user.workHours.Monday?.end || '' },
@@ -146,7 +145,7 @@ function UserProfileForm({ user, onUpdate, canEdit }: { user: User, onUpdate: (v
             <FormItem>
               <FormLabel>Correo Electrónico</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="usuario@taskcanvas.com" {...field} />
+                <Input type="email" placeholder="ejemplo@taskcanvas.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -245,36 +244,20 @@ function UserProfileForm({ user, onUpdate, canEdit }: { user: User, onUpdate: (v
                       control={form.control}
                       name={`workHours.${day}.active` as const}
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value as any}
-                              onCheckedChange={field.onChange}
-                              disabled={!canEdit}
-                            />
-                          </FormControl>
+                        <FormItem className="flex flex-row items-center justify-between w-full space-y-0">
                           <FormLabel className="text-base font-semibold">
                             {dayTranslations[day]}
                           </FormLabel>
+                          <FormControl>
+                            <Switch
+                                checked={field.value as any}
+                                onCheckedChange={field.onChange}
+                                disabled={!canEdit}
+                            />
+                          </FormControl>
                         </FormItem>
                       )}
                     />
-                     <FormField
-                        control={form.control}
-                        name={`workHours.${day}.virtual` as const}
-                        render={({ field }) => (
-                          <FormItem className="flex items-center gap-2">
-                            <FormControl>
-                              <Switch
-                                checked={field.value as any}
-                                onCheckedChange={field.onChange}
-                                disabled={!(watchedWorkHours as any)[day]?.active || !canEdit}
-                              />
-                            </FormControl>
-                            <FormLabel>Virtual</FormLabel>
-                          </FormItem>
-                        )}
-                      />
                 </div>
                 {(watchedWorkHours as any)[day]?.active && (
                     <div className="flex items-center gap-4 pt-4">
@@ -283,12 +266,14 @@ function UserProfileForm({ user, onUpdate, canEdit }: { user: User, onUpdate: (v
                         name={`workHours.${day}.start` as const}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Inicio</FormLabel>
+                            <FormLabel>Inicio <span className="text-destructive">*</span></FormLabel>
                             <FormControl>
-                              <Input 
-                                  {...field} 
-                                  placeholder="HH:mm"
-                                  onChange={e => field.onChange(formatTime(e.target.value))}
+                              <Input
+                                className="w-24"
+                                {...field} 
+                                placeholder="HH:mm"
+                                required
+                                onChange={e => field.onChange(formatTime(e.target.value))}
                               />
                             </FormControl>
                           </FormItem>
@@ -299,12 +284,29 @@ function UserProfileForm({ user, onUpdate, canEdit }: { user: User, onUpdate: (v
                         name={`workHours.${day}.end` as const}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Fin</FormLabel>
+                            <FormLabel>Fin <span className="text-destructive">*</span></FormLabel>
                             <FormControl>
                               <Input 
                                   {...field} 
                                   placeholder="HH:mm"
+                                  required
                                   onChange={e => field.onChange(formatTime(e.target.value))}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`workHours.${day}.virtual` as const}
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-center gap-2 ml-auto">
+                            <FormLabel>Virtual</FormLabel>
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value as any}
+                                onCheckedChange={field.onChange}
+                                disabled={!canEdit}
                               />
                             </FormControl>
                           </FormItem>
@@ -316,7 +318,7 @@ function UserProfileForm({ user, onUpdate, canEdit }: { user: User, onUpdate: (v
             ))}
           </div>
           <FormDescription className="mt-2">
-            Active un día para habilitar la configuración de su horario. Los días marcados como virtuales se destacarán en la agenda.
+            Active un día para habilitar la configuración de su horario. Los días activos requieren hora de inicio y fin. Los días marcados como virtuales se destacarán en la agenda.
           </FormDescription>
            {form.formState.errors.workHours && (
               <p className="text-sm font-medium text-destructive mt-2">
@@ -364,7 +366,7 @@ export default function UsersManager({ canManageUsers }: { canManageUsers: boole
         id: `user-${Date.now()}`,
         name: ``,
         email: ``,
-        positions: [{ fullName: 'Sin Asignar', shortName: 'N/A' }],
+        positions: [{ fullName: '', shortName: '' }],
         role: 'user',
         workHours: {
             Monday: { active: false, virtual: false },
@@ -408,7 +410,7 @@ export default function UsersManager({ canManageUsers }: { canManageUsers: boole
                 </CardDescription>
             </div>
             {canManageUsers && (
-                <Button onClick={handleAddUser}>
+                <Button type="submit" onClick={handleAddUser}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Agregar Usuario
                 </Button>

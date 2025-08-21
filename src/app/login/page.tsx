@@ -6,8 +6,9 @@ export default function LoginPage() {
   return (
     <div style={{ display: 'grid', placeItems: 'center', height: '100vh' }}>
       <div style={{ textAlign: 'center' }}>
-        <h1>Welcome to the App</h1>
-        <p>Please sign in with your Google account</p>
+        <h1>Bienvenido a TaskCanvas ♥️</h1>
+        <p>Por favor, inicia sesión con tu cuenta de Google</p>
+        <></>
         <button
           onClick={() => signIn("google", { callbackUrl: "/canvas" })}
           style={{
@@ -20,7 +21,7 @@ export default function LoginPage() {
             cursor: 'pointer',
           }}
         >
-          Sign in with Google
+          Iniciar sesión con Google
         </button>
       </div>
     </div>

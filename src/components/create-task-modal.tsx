@@ -56,16 +56,16 @@ const newTaskFormSchema = z.object({
     path: ["endDate"],
   });
   
-export default function CreateTaskModal({ closeDialog, startDate }: { closeDialog: () => void, startDate: Date | undefined }) {
+export default function CreateTaskModal({ closeDialog, startDate, userId }: { closeDialog: () => void, startDate: Date | undefined, userId: string }) {
     const { users } = useContext(UserContext);
-    const { addTask } = useContext(DataContext);
+    const { addTask, refreshData } = useContext(DataContext);
     
     const form = useForm<z.infer<typeof newTaskFormSchema>>({
       resolver: zodResolver(newTaskFormSchema),
       defaultValues: {
         title: '',
         description: '',
-        userId: '',
+        userId: userId || '',
         days: [],
         priority: 'medium',
         status: 'todo',
@@ -79,6 +79,7 @@ export default function CreateTaskModal({ closeDialog, startDate }: { closeDialo
       const newTask: Task = {
         id: `task-${Date.now()}`,
         ...values,
+        userId: userId || '',
         startDate: values.startDate.toISOString(),
         endDate: values.endDate?.toISOString() || undefined,
         days: values.days as Task['days'] || [],
@@ -88,6 +89,7 @@ export default function CreateTaskModal({ closeDialog, startDate }: { closeDialo
         await addTask(newTask);
         alert('¡Tarea creada exitosamente!');
         closeDialog();
+        refreshData();
       } catch (error) {
         console.error('Error creating task:', error);
         alert('Error al crear la tarea. Por favor, inténtalo de nuevo.');

@@ -81,10 +81,9 @@ const TaskStatusChanger = ({ task, canChangeStatus }: { task: Task; canChangeSta
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="flex items-center gap-2 -ml-2">
+        <Button variant="ghost" size="sm" className="flex items-center gap-2 ml-auto -mr-2 hover:bg-transparent hover:text-foreground">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[task.status] }} />
             <span className="text-xs font-semibold">{statusMap[task.status]}</span>
-            <Ellipsis className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
@@ -114,7 +113,6 @@ export default function UserAgendaPage() {
   const [taskStartDate, setTaskStartDate] = useState<Date>();
 
   useEffect(() => {
-    // Set initial date on client to avoid hydration mismatch
     setCurrentDate(new Date());
   }, []);
 
@@ -183,34 +181,10 @@ export default function UserAgendaPage() {
 
   return (
     <div className="flex h-full flex-col">
-       <div className="flex flex-col md:flex-row items-center justify-between pb-4 gap-4">
-        <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold font-headline">Agenda Semanal</h1>
-          
-          {/* pagination */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => setCurrentDate(subWeeks(currentDate, 1))}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="secondary" onClick={() => setCurrentDate(new Date())}>Hoy</Button>
-            <Button variant="outline" size="icon" onClick={() => setCurrentDate(addWeeks(currentDate, 1))}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <span className="font-semibold text-muted-foreground capitalize">{weekStart} - {weekEnd}</span>
-        </div>
-        
-        {/* user selector */}
-        <div className="flex items-center space-x-4">
-          <Select value={selectedUser} onValueChange={setSelectedUser}>
-            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Seleccionar usuario" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Ver todos los usuarios</SelectItem>
-              {users.map((user) => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+       {/* Header with just title */}
+       <div className="pb-4">
+         <h1 className="text-3xl font-bold font-headline">Agenda Semanal</h1>
+       </div>
       
       {/* novelties */}
       {activeNovelties.length > 0 && (
@@ -226,6 +200,30 @@ export default function UserAgendaPage() {
             ))}
         </div>
       )}
+      
+      {/* Navigation and user selector on same line */}
+      <div className="flex items-center justify-between pb-4 gap-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setCurrentDate(subWeeks(currentDate, 1))} className="bg-white shadow-sm border-gray-300 hover:bg-gray-50">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-xl font-semibold capitalize px-4">{weekStart} - {weekEnd}</span>
+          <Button variant="outline" size="sm" onClick={() => setCurrentDate(addWeeks(currentDate, 1))} className="bg-white shadow-sm border-gray-300 hover:bg-gray-50">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {/* user selector */}
+        <div className="flex items-center">
+          <Select value={selectedUser} onValueChange={setSelectedUser}>
+            <SelectTrigger className="w-[200px] bg-white border-gray-300 shadow-sm"><SelectValue placeholder="Seleccionar usuario" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Ver todos los usuarios</SelectItem>
+              {users.map((user) => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       {/* tasks for week */}
       <div className="flex-1 overflow-x-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -261,7 +259,7 @@ export default function UserAgendaPage() {
 
                 {/* users and tasks for day */}
                 <div className="flex flex-col gap-4">
-                  {usersForDay.length > 0 ? usersForDay.map(user => {
+                  {usersForDay.length > 0 ? usersForDay.filter(user => selectedUser === 'all' || user.id === selectedUser).map(user => {
                     const workDay = user.workHours?.[dayName as keyof User['workHours']];
                     
                     const userTasks = tasks.filter(task => {
@@ -274,7 +272,10 @@ export default function UserAgendaPage() {
                         if (task.status === 'done' && task.endDate && date > new Date(task.endDate)) return false;
                         
                         return date >= new Date(task.startDate);
-                      };
+                      }
+                      return false;
+                    }).sort((a,b) => {
+                      return priorityOrder[a.priority] - priorityOrder[b.priority];
                     });
 
                     const isDropTarget = dragOverTarget?.userId === user.id && dragOverTarget.day === dayName;
@@ -316,11 +317,14 @@ export default function UserAgendaPage() {
                                     style={{ borderTop: `10px solid ${priorityBarClasses[task.priority]}` }}
                                   >
                                     <h4 className={cn("font-bold text-sm mb-1 pb-1 border-b border-black/10", task.status === 'done' && 'line-through')}>{task.title}</h4>
+                                    {task.startTime && <p className="text-xs font-semibold text-gray-800/90">{task.startTime} {task.duration && `- (${task.duration} m)`}</p>}
                                     <p className="flex-grow text-xs text-gray-800/90 overflow-auto">{task.description}</p>
-                                    <div className="mt-auto pt-2 flex items-center justify-between text-xs text-gray-600/90">
-                                      <span>{task.startTime ? `${task.startTime} (${task.duration}m)` : <span className={cn("font-bold", priorityTextColor[task.priority])}>{priorityText[task.priority]}</span>}</span>
-                                       <TaskStatusChanger task={task} canChangeStatus={canChangeStatus} />
+                                    
+                                    <div className="mt-auto pt-1 flex items-center justify-between text-xs text-gray-600/90">
+                                      <span className={cn("font-bold", priorityTextColor[task.priority])}>{priorityText[task.priority]}</span>   
+                                      <TaskStatusChanger task={task} canChangeStatus={canChangeStatus} />
                                     </div>
+                                    
                                   </div>
                                 );
                               }) : (
@@ -337,6 +341,7 @@ export default function UserAgendaPage() {
                               <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => {
                                 setIsTaskModalOpen(true);
                                 setTaskStartDate(date);
+                                setSelectedUser(user.id);
                               }}>
                                 <PlusCircle className="mr-2 h-3 w-3" />
                                 Agregar Tarea
@@ -360,7 +365,11 @@ export default function UserAgendaPage() {
 
       <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
         <DialogContent>
-          <CreateTaskModal closeDialog={() => setIsTaskModalOpen(false)} startDate={taskStartDate}/>
+          <CreateTaskModal 
+            startDate={taskStartDate}
+            userId={selectedUser}
+            closeDialog={() => setIsTaskModalOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>

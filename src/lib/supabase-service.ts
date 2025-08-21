@@ -42,17 +42,16 @@ export const userService = {
   },
 
   async create(user: User): Promise<User> {
-    const { workHours, frequentTasks, ...rest } = user as unknown as any;
-    const insertPayload = {
-      ...rest,
-      // allow passing email alongside User shape
+    const { workHours, frequentTasks, ...etc } = user as unknown as any;
+    const payload = {
       work_hours: workHours,
       frequent_tasks: frequentTasks,
+      ...etc,
     };
 
     const { data, error } = await supabase
       .from('users')
-      .insert(insertPayload)
+      .insert(payload)
       .select()
       .single();
     
@@ -127,6 +126,7 @@ export const taskService = {
         endDate: task.end_date,
         days: task.days,
         startTime: task.start_time,
+        duration: task.duration,
         notes: task.notes,
       };
     });
@@ -170,7 +170,21 @@ export const taskService = {
       .single();
     
     if (error) throw error;
-    return data;
+    
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      status: data.status,
+      userId: data.user_id,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      days: data.days,
+      startTime: data.start_time,
+      duration: data.duration,
+      notes: data.notes,
+    };
   },
 
   async update(id: string, updates: Partial<Task>): Promise<Task> {
@@ -189,7 +203,21 @@ export const taskService = {
       .single();
     
     if (error) throw error;
-    return data;
+    
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      status: data.status,
+      userId: data.user_id,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      days: data.days,
+      startTime: data.start_time,
+      duration: data.duration,
+      notes: data.notes,
+    };
   },
 
   async delete(id: string): Promise<void> {
@@ -295,11 +323,12 @@ export const noveltyService = {
   },
 
   async update(id: string, updates: Partial<Novelty>): Promise<Novelty> {
+    const { updatedAt, ...etc } = updates;
+    const payload = { updated_at: updatedAt, ...etc };
+
     const { data, error } = await supabase
       .from('novelties')
-      .update({
-        ...updates,
-      })
+      .update(payload)
       .eq('id', id)
       .select()
       .single();

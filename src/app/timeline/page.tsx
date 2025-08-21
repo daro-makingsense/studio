@@ -1,15 +1,14 @@
 'use client';
 
 import React, { useContext, useMemo, useState, useCallback, useRef, useEffect } from 'react';
-import { addDays, subDays, format, isSameDay, getDay, nextMonday, isWithinInterval, previousFriday } from 'date-fns';
+import { addDays, subDays, format, isSameDay, getDay, nextMonday, isWithinInterval, previousFriday, isAfter, isBefore } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
 import { UserContext } from '@/context/UserContext';
 import { DataContext } from '@/context/DataContext';
 import type { Task, User } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { PlusCircle, User as UserIcon, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Megaphone, Ellipsis } from 'lucide-react';
-import Link from 'next/link';
+import { User as UserIcon, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Megaphone, Ellipsis, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -21,6 +20,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import CreateTaskModal from '@/components/create-task-modal';
 
 
 const priorityClasses = {
@@ -57,6 +58,11 @@ const statusColors: { [key: string]: string } = {
   done: 'hsl(var(--status-done))',
 };
 
+const shifts = [
+  { start: '08:00', end: '13:00' },
+  { start: '18:00', end: '22:30' }
+];
+
 const TaskCard = ({ task, canChangeStatus }: { task: Task, canChangeStatus: boolean }) => {
     return (
         <div
@@ -69,10 +75,9 @@ const TaskCard = ({ task, canChangeStatus }: { task: Task, canChangeStatus: bool
             style={{ borderTop: `10px solid ${priorityBarClasses[task.priority]}` }}
         >
             <h4 className={cn("font-bold text-sm mb-1 pb-1 border-b border-black/10", task.status === 'done' && 'line-through')}>{task.title}</h4>
-            {task.startTime && <p className="text-xs font-semibold text-gray-800/90">{task.startTime} ({task.duration}m)</p>}
-            <p className="flex-grow text-xs text-gray-800/90 overflow-auto">{task.description}</p>
+            {task.startTime && <p className="text-xs font-semibold text-gray-800/90">{task.startTime} {task.duration && `- (${task.duration} m)`}</p>}
             <div className="mt-auto pt-1 flex items-center justify-between text-xs text-gray-600/90">
-                {!task.startTime && <span className={cn("font-bold", priorityTextColor[task.priority])}>{priorityText[task.priority]}</span>}
+                <span className={cn("font-bold", priorityTextColor[task.priority])}>{priorityText[task.priority]}</span>   
                 <TaskStatusChanger task={task} canChangeStatus={canChangeStatus} />
             </div>
         </div>
@@ -85,7 +90,7 @@ const TaskStatusChanger = ({ task, canChangeStatus }: { task: Task; canChangeSta
 
   if (!canChangeStatus) {
     return (
-      <div className="flex items-center gap-2 ml-auto">
+      <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[task.status] }} />
           <span className="text-xs font-semibold">{statusMap[task.status]}</span>
       </div>
@@ -95,10 +100,9 @@ const TaskStatusChanger = ({ task, canChangeStatus }: { task: Task; canChangeSta
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="flex items-center gap-2 ml-auto -mr-2">
+        <Button variant="ghost" size="sm" className="flex items-center gap-2 ml-auto -mr-2 hover:bg-transparent hover:text-foreground">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[task.status] }} />
             <span className="text-xs font-semibold">{statusMap[task.status]}</span>
-            <Ellipsis className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
@@ -137,14 +141,23 @@ const allTimeSlots = Array.from({ length: (END_HOUR - START_HOUR) * 2 + 1 }, (_,
 
 const TimeRuler = ({ activeSlots }: { activeSlots: { [key: string]: boolean } }) => {
   return (
-    <div className="relative border-r">
+    <div className="relative border-r bg-background">
       {allTimeSlots.map((time, index) => {
         const isActive = activeSlots[time];
         const height = isActive ? SLOT_HEIGHT : COLLAPSED_SLOT_HEIGHT;
+        const isHourMark = time.endsWith(':00');
+        // Only show times when the slot is active (has enough space)
+        const showTime = isActive;
+        
         return (
-         <div key={time} style={{ height }} className="relative flex items-start border-b transition-all duration-300">
-           {isActive && (
-            <span className="absolute left-2 -translate-y-1/2 text-sm text-muted-foreground" style={{ top: index === 0 ? '5px' : '0' }}>{time}</span>
+         <div key={time} style={{ height }} className="relative flex items-center transition-all duration-300 bg-background">
+           {showTime && (
+            <span className={`absolute left-1 text-xs ${isHourMark ? 'font-semibold text-foreground' : 'text-muted-foreground'}`} style={{ top: '50%', transform: 'translateY(-50%)' }}>
+              {time}
+            </span>
+           )}
+           {isActive && isHourMark && (
+             <div className="absolute right-0 top-0 w-2 h-px bg-border"></div>
            )}
          </div>
         )
@@ -160,7 +173,7 @@ const ShiftColumn = ({ totalHeight, activeSlots }: { totalHeight: number, active
     ];
 
     return (
-        <div className="relative w-10 border-r" style={{ height: totalHeight }}>
+        <div className="relative w-10 border-r bg-background" style={{ height: totalHeight }}>
             {shifts.map(shift => {
                 const startMinutes = timeToMinutes(shift.start);
                 const endMinutes = timeToMinutes(shift.end);
@@ -190,27 +203,25 @@ const ShiftColumn = ({ totalHeight, activeSlots }: { totalHeight: number, active
     )
 }
 
-const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots, totalHeight }: { user: User, currentUser: User | null, tasksForDay: Task[], selectedDate: Date, activeSlots: { [key: string]: boolean }, totalHeight: number }) => {
+const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots, totalHeight, onAddTask }: { user: User, currentUser: User | null, tasksForDay: Task[], selectedDate: Date, activeSlots: { [key: string]: boolean }, totalHeight: number, onAddTask: (date: Date, userId: string) => void }) => {
     const dayKey = format(selectedDate, 'EEEE', { locale: enUS });
     
-    const tasksWithTime = tasksForDay.filter(t => t.startTime);
-    const tasksWithoutTime = tasksForDay.filter(t => !t.startTime);
+    // Sort all tasks by start time (tasks with start time first, ordered by time, then tasks without start time)
+    const sortedTasks = [...tasksForDay].sort((a, b) => {
+        if (a.startTime && b.startTime) {
+            return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+        }
+        if (a.startTime && !b.startTime) return -1;
+        if (!a.startTime && b.startTime) return 1;
+        return 0;
+    });
     
     const canManageTasks = currentUser?.role === 'admin' || currentUser?.role === 'owner';
 
     const workDay = user.workHours[dayKey as keyof typeof user.workHours];
-    
-    const calculateTopPosition = (time: string) => {
-        let position = 0;
-        for (const slot of allTimeSlots) {
-            if (slot === time) break;
-            position += activeSlots[slot] ? SLOT_HEIGHT : COLLAPSED_SLOT_HEIGHT;
-        }
-        return position;
-    }
 
     const renderWorkHoursBlock = () => {
-        if (!workDay || !workDay.active || !workDay.start || !workDay.end) return null;
+        if (!workDay || !workDay.active) return null;
        
         let top = 0;
         let calculatedHeight = 0;
@@ -218,9 +229,9 @@ const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots,
         for (const slot of allTimeSlots) {
           const slotMinutes = timeToMinutes(slot);
           const slotHeight = activeSlots[slot] ? SLOT_HEIGHT : COLLAPSED_SLOT_HEIGHT;
-          if (slotMinutes < timeToMinutes(workDay.start!)) {
+          if (slotMinutes < timeToMinutes(workDay.start || shifts[0].start)) {
             top += slotHeight;
-          } else if (slotMinutes < timeToMinutes(workDay.end!)) {
+          } else if (slotMinutes < timeToMinutes(workDay.end || shifts[1].end)) {
             calculatedHeight += slotHeight;
           }
         }
@@ -229,52 +240,42 @@ const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots,
 
         return (
             <div className="absolute w-full p-2" style={{ top: `${top}px`, height: `${calculatedHeight}px`, backgroundColor: `${user.color}1A` }}>
-                <div className="text-xs font-semibold opacity-70 mb-2" style={{color: user.color}}>{workDay.start} - {workDay.end} ({workDay.virtual ? 'Virtual' : 'Presencial'})</div>
-                <div className="space-y-2">
-                  {tasksWithoutTime.map(task => {
+                <div className="text-xs font-semibold opacity-70 mb-2" style={{color: user.color}}>{workDay.start || shifts[0].start} - {workDay.end || shifts[1].end} ({workDay.virtual ? 'Virtual' : 'Presencial'})</div>
+                <div className="space-y-2 overflow-hidden" style={{ maxHeight: canManageTasks ? `${calculatedHeight - 60}px` : `${calculatedHeight - 30}px` }}>
+                  {sortedTasks.map(task => {
                     const canChangeStatus = canManageTasks || currentUser?.id === task.userId;
                     return <TaskCard key={task.id} task={task} canChangeStatus={canChangeStatus} />;
                   })}
                 </div>
+                {canManageTasks && (
+                    <div className="absolute bottom-2 left-2 right-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full text-xs opacity-70 hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm" 
+                            onClick={() => onAddTask(selectedDate, user.id)}
+                        >
+                            <PlusCircle className="mr-2 h-3 w-3" />
+                            Agregar Tarea
+                        </Button>
+                    </div>
+                )}
             </div>
         );
     }
     
     return (
-        <div className="relative border-r">
+        <div className="relative border-r bg-background">
+            {/* Background fill for entire column */}
+            <div className="absolute inset-0 bg-background" style={{height: totalHeight}}></div>
             <div className="relative" style={{height: totalHeight}}>
                 {renderWorkHoursBlock()}
-                {tasksWithTime.map(task => {
-                    if (!task.startTime) return null;
-                    const duration = task.duration || SLOT_DURATION;
-                    
-                    let top = calculateTopPosition(task.startTime);
-                    
-                    let calculatedHeight = 0;
-                    const taskStartMinutes = timeToMinutes(task.startTime);
-                    const taskEndMinutes = taskStartMinutes + duration;
-
-                    for (const slot of allTimeSlots) {
-                        const slotMinutes = timeToMinutes(slot);
-                        if (slotMinutes >= taskStartMinutes && slotMinutes < taskEndMinutes) {
-                            calculatedHeight += activeSlots[slot] ? SLOT_HEIGHT : COLLAPSED_SLOT_HEIGHT;
-                        }
-                    }
-
-                    const canChangeStatus = canManageTasks || currentUser?.id === task.userId;
-                    
-                    return (
-                        <div key={task.id} className={cn('absolute p-2 flex flex-col rounded-lg shadow-lg transition-transform w-[95%] left-[2.5%] bg-background z-10')} style={{ top: `${top}px`, height: `${calculatedHeight - 2}px` }}>
-                           <TaskCard task={task} canChangeStatus={canChangeStatus}/>
-                        </div>
-                    );
-                })}
             </div>
         </div>
     )
 }
 
-const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
+const DailyTimeline = ({ selectedDate, onAddTask }: { selectedDate: Date, onAddTask: (date: Date, userId: string) => void }) => {
   const { users, currentUser } = useContext(UserContext);
   const { tasks, calendarEvents } = useContext(DataContext);
   const [columnWidths, setColumnWidths] = useState<{ [key: string]: number }>({});
@@ -287,32 +288,19 @@ const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
   const tasksForDay = useMemo(() => {
     return tasks.filter(t => {
       if (t.status === 'archived') return false;
-
-      if (t.startDate) {
-        const taskStartDate = new Date(t.startDate);
-        const taskEndDate = t.endDate ? new Date(t.endDate) : new Date(8640000000000000);
-        if (!isWithinInterval(selectedDate, { start: taskStartDate, end: taskEndDate })) {
-          return false;
-        }
-        if (t.days && t.days.length > 0) {
-          const taskDayIndices = t.days.map(d => (['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(d) + 1) % 7);
-          return taskDayIndices.includes(dayIndex);
-        } else {
-            return isSameDay(taskStartDate, selectedDate);
-        }
-      }
-      return false;
+      if (t.status === 'done' && t.endDate && selectedDate >= new Date(t.endDate)) return false;
+      return selectedDate >= new Date(t.startDate);
     });
   }, [tasks, selectedDate, dayIndex]);
 
   const usersForDay = useMemo(() => {
-    console.debug('usersForDay', users);
-    return users.filter(user => {
-      const workDay = user.workHours[dayKey];
-      const hasTasks = tasksForDay.some(t => t.userId === user.id);
-      return workDay?.active || hasTasks;
-    }).sort((a,b) => a.name.localeCompare(b.name));
-  }, [users, tasksForDay, dayKey]);
+    return users.filter(user => user.workHours[dayKey].active || user.workHours[dayKey].virtual ).sort((a,b) => {
+        const aStart = timeToMinutes(a.workHours[dayKey].start || '00:00');
+        const bStart = timeToMinutes(b.workHours[dayKey].start || '00:00');
+        if (!aStart || !bStart) return 0;
+        return aStart - bStart;
+    });
+  }, [users, dayKey]);
   
   useEffect(() => {
     const initialWidths: { [key: string]: number } = {};
@@ -335,10 +323,6 @@ const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
   
   const activeSlots = useMemo(() => {
     const active = {} as { [key: string]: boolean };
-    const shifts = [
-        { start: '08:00', end: '13:00' },
-        { start: '18:00', end: '22:30' }
-    ];
 
     for (const slot of allTimeSlots) {
         const slotMinutes = timeToMinutes(slot);
@@ -356,9 +340,9 @@ const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
         }
 
         for (const user of usersForDay) {
-            const workDay = user.workHours[dayKey as keyof typeof user.workHours];
-            if (workDay?.active && workDay.start && workDay.end) {
-                if (slotMinutes >= timeToMinutes(workDay.start) && slotMinutes < timeToMinutes(workDay.end)) {
+            const workDay = user.workHours[dayKey];
+            if (workDay) {
+                if (slotMinutes >= timeToMinutes(workDay.start || shifts[0].start) && slotMinutes < timeToMinutes(workDay.end || shifts[0].end)) {
                     isSlotActive = true;
                     break;
                 }
@@ -431,14 +415,14 @@ const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
   const gridTemplateColumns = `60px 40px ${usersForDay.map(u => `${columnWidths[u.id] || 200}px`).join(' ')}`;
 
   return (
-    <div className="relative h-full w-full flex flex-col">
+    <div className="relative h-full w-full flex flex-col bg-background">
        <div className="sticky top-0 z-20 bg-background">
-        <div className="grid" style={{ gridTemplateColumns }}>
+        <div className="grid bg-background" style={{ gridTemplateColumns }}>
           {/* Header section */}
           <div className="sticky left-0 z-30 h-28 border-b border-r bg-background p-2 text-center"></div>
           <div className="sticky left-[60px] z-30 h-28 border-b border-r bg-background p-2 text-center"></div>
           {usersForDay.map(user => (
-            <div key={user.id} className="relative h-28 flex flex-col items-center justify-center border-b border-r p-2 text-center">
+            <div key={user.id} className="relative h-28 flex flex-col items-center justify-center border-b border-r p-2 text-center bg-background">
               <UserIcon className="h-5 w-5 mb-1 shrink-0" style={{ color: user.color }} />
               <div className="font-semibold text-sm">{user.name}</div>
               <div className="text-xs text-muted-foreground">{user.positions.map(p => p.shortName).join(' / ')}</div>
@@ -449,10 +433,15 @@ const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
             </div>
           ))}
         </div>
+        {/* Events for day */}
          {eventsForDay.length > 0 && (
-           <div className="sticky top-[112px] z-20 bg-background">
+           <div className="sticky top-[112px] z-30 bg-background border-b">
               <div className="grid" style={{ gridTemplateColumns }}>
-                  <div className="col-span-full bg-accent/50 border-y p-2 text-center font-semibold text-accent-foreground">
+                  {/* Time columns with proper background and borders */}
+                  <div className="sticky left-0 z-40 bg-background border-r"></div>
+                  <div className="sticky left-[60px] z-40 bg-background border-r"></div>
+                  {/* Events span only user columns */}
+                  <div className={`bg-accent/50 border-y p-2 text-center font-semibold text-accent-foreground`} style={{ gridColumn: `3 / ${3 + usersForDay.length}` }}>
                       <div className="flex items-center justify-center gap-4">
                           {eventsForDay.map(event => (
                               <div key={event.id} className="flex items-center gap-2">
@@ -466,14 +455,24 @@ const DailyTimeline = ({ selectedDate }: { selectedDate: Date }) => {
            </div>
         )}
       </div>
-      <div>
-        <div className="grid" style={{ gridTemplateColumns, position: 'relative' }}>
+      {/* Tasks for day */}
+      <div className="bg-background">
+        <div className="grid bg-background" style={{ gridTemplateColumns, position: 'relative' }}>
           <div className="sticky left-0 z-10 bg-background"><TimeRuler activeSlots={activeSlots}/></div>
           <div className="sticky left-[60px] z-10 bg-background"><ShiftColumn totalHeight={totalHeight} activeSlots={activeSlots}/></div>
           {usersForDay.map(user => {
             const userTasks = tasksForDay.filter(t => t.userId === user.id);
             return (
-              <UserColumn key={user.id} user={user} currentUser={currentUser} tasksForDay={userTasks} selectedDate={selectedDate} activeSlots={activeSlots} totalHeight={totalHeight} />
+              <UserColumn 
+                key={user.id} 
+                user={user} 
+                currentUser={currentUser} 
+                tasksForDay={userTasks} 
+                selectedDate={selectedDate} 
+                activeSlots={activeSlots} 
+                totalHeight={totalHeight} 
+                onAddTask={onAddTask}
+              />
             )
           })}
         </div>
@@ -488,6 +487,15 @@ export default function TimelinePage() {
   const { users } = useContext(UserContext);
   const { tasks, calendarEvents, novelties } = useContext(DataContext);
   const [isClient, setIsClient] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [taskStartDate, setTaskStartDate] = useState<Date>();
+  const [taskUserId, setTaskUserId] = useState<string>();
+
+  const handleAddTask = useCallback((date: Date, userId: string) => {
+    setTaskStartDate(date);
+    setTaskUserId(userId);
+    setIsTaskModalOpen(true);
+  }, []);
 
   const hasActivity = useCallback((date: Date) => {
     const dayKey = format(date, 'EEEE', { locale: enUS });
@@ -599,45 +607,13 @@ export default function TimelinePage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-       <div className="flex flex-wrap items-center justify-between pb-4 gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col">
-            <h1 className="text-3xl font-bold font-headline">Cronograma Diario</h1>
-             <Popover>
-                <PopoverTrigger asChild>
-                    <Button variant={'link'} className="p-0 h-auto justify-start text-muted-foreground capitalize">
-                       <h2 className="text-xl font-semibold">
-                         {selectedDate ? format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es }) : <span>Seleccionar fecha</span>}
-                       </h2>
-                       <CalendarIcon className="ml-2 h-4 w-4" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                    <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
-                    initialFocus
-                    locale={es}
-                    />
-                </PopoverContent>
-            </Popover>
-          </div>
-            <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={handlePrevDay}>
-                <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="secondary" onClick={() => setSelectedDate(new Date())}>Hoy</Button>
-                <Button variant="outline" size="icon" onClick={handleNextDay}>
-                <ChevronRight className="h-4 w-4" />
-                </Button>
-            </div>
-        </div>
-        <Link href={`/admin?from=/timeline&date=${format(selectedDate, 'yyyy-MM-dd')}`}>
-            <Button><PlusCircle className="mr-2 h-4 w-4" />Crear Tarea</Button>
-        </Link>
-      </div>
+    <div className="flex h-full flex-col bg-background">
+       {/* Header with just the title */}
+       <div className="pb-4">
+         <h1 className="text-3xl font-bold font-headline">Cronograma Diario</h1>
+       </div>
+
+      {/* Novelties section */}
       {activeNovelties.length > 0 && (
         <div className="mb-4 space-y-2">
             {activeNovelties.map(novelty => (
@@ -651,11 +627,31 @@ export default function TimelinePage() {
             ))}
         </div>
        )}
-      <Card className="flex-grow flex flex-col">
-        <CardContent className="p-0 flex-grow relative overflow-auto flex flex-col">
-            {selectedDate && <DailyTimeline selectedDate={selectedDate} />}
+
+       {/* Date and navigation aligned to left */}
+       <div className="flex items-center justify-start gap-2 pb-4">
+         <Button variant="outline" size="sm" onClick={handlePrevDay} className="bg-white shadow-sm border-gray-300 hover:bg-gray-50">
+           <ChevronLeft className="h-4 w-4" />
+         </Button>
+         <span className="text-xl font-semibold capitalize px-4">
+           {selectedDate ? format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es }) : "Seleccionar fecha"}
+         </span>
+         <Button variant="outline" size="sm" onClick={handleNextDay} className="bg-white shadow-sm border-gray-300 hover:bg-gray-50">
+           <ChevronRight className="h-4 w-4" />
+         </Button>
+       </div>
+
+      <Card className="flex-grow flex flex-col bg-background">
+        <CardContent className="p-0 flex-grow relative overflow-auto flex flex-col bg-background">
+            {selectedDate && <DailyTimeline selectedDate={selectedDate} onAddTask={handleAddTask} />}
         </CardContent>
       </Card>
+
+      <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
+        <DialogContent>
+          {taskUserId && <CreateTaskModal closeDialog={() => setIsTaskModalOpen(false)} startDate={taskStartDate} userId={taskUserId} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -75,8 +75,8 @@ import { useSession } from 'next-auth/react';
 
 
 const priorityVariant = {
-  low: 'secondary',
-  medium: 'outline',
+  low: 'outline',
+  medium: 'secondary',
   high: 'destructive',
 } as const;
 
@@ -84,7 +84,7 @@ const statusVariant = {
   todo: 'outline',
   'in-progress': 'default',
   done: 'secondary',
-  archived: 'ghost',
+  archived: 'secondary',
 } as const;
 
 const dayMap: { [key: string]: string } = {
@@ -168,6 +168,7 @@ function EditTaskForm({ task, onUpdate, onDelete, closeDialog }: { task: Task, o
 
     function onSubmit(values: TaskFormValues) {
         onUpdate({
+            ...task,
             ...values,
             startDate: values.startDate ? values.startDate.toISOString() : undefined,
             endDate: values.endDate ? values.endDate.toISOString() : undefined,
@@ -718,33 +719,10 @@ export default function TasksManager() {
     searchTerm: '',
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const { data: session, status } = useSession()
+  const { data: session, status } = useSession();
+  const [isTaskCreatorOpen, setIsTaskCreatorOpen] = useState(false);
 
-    if (status === 'loading') return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Cargando...</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-32 w-full" />
-        </CardContent>
-      </Card>
-    )
-    
-    if (session && session.user && !(session.user.role === 'admin' || session.user.role === 'owner')) {
-      return (
-        <div className="container mx-auto py-10 flex flex-col items-center justify-center text-center">
-            <Lock className="h-16 w-16 text-destructive mb-4"/>
-            <h1 className="text-3xl font-bold font-headline">Acceso Denegado</h1>
-            <p className="text-lg text-muted-foreground mt-2">
-                No tienes los permisos necesarios para acceder a esta sección.
-            </p>
-        </div>
-      )
-    }
-  
-  const canManageTasks = currentUser?.role === 'admin' || currentUser?.role === 'owner';
-
+  // All useMemo hooks must be called before any early returns
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       const userMatch = filters.user === 'all' || task.userId === filters.user;
@@ -760,6 +738,32 @@ export default function TasksManager() {
 
   const activeTasks = useMemo(() => filteredTasks.filter(t => t.status !== 'archived'), [filteredTasks]);
   const archivedTasks = useMemo(() => filteredTasks.filter(t => t.status === 'archived'), [filteredTasks]);
+
+  // Early returns after all hooks have been called
+  if (status === 'loading') return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Cargando...</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-32 w-full" />
+      </CardContent>
+    </Card>
+  )
+  
+  if (session && session.user && !(session.user.role === 'admin' || session.user.role === 'owner')) {
+    return (
+      <div className="container mx-auto py-10 flex flex-col items-center justify-center text-center">
+          <Lock className="h-16 w-16 text-destructive mb-4"/>
+          <h1 className="text-3xl font-bold font-headline">Acceso Denegado</h1>
+          <p className="text-lg text-muted-foreground mt-2">
+              No tienes los permisos necesarios para acceder a esta sección.
+          </p>
+      </div>
+    )
+  }
+
+  const canManageTasks = currentUser?.role === 'admin' || currentUser?.role === 'owner';
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -799,104 +803,101 @@ export default function TasksManager() {
     link.click();
     document.body.removeChild(link);
   };
-  
-  const [isTaskCreatorOpen, setIsTaskCreatorOpen] = useState(false);
 
   return (
     <>
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between">
-            <div>
+        <div>
             <CardTitle>Gestor de Tareas</CardTitle>
             <CardDescription>
                 Cree, edite, filtre y exporte todas las tareas del sistema.
             </CardDescription>
-            </div>
-            {/* CREAR / EXPORTAR */}
-            { canManageTasks && (
-            <div className="flex items-center gap-2">
-                <Button onClick={() => setIsTaskCreatorOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Crear Tarea
-                </Button>
-                <Button variant="outline" onClick={() => exportToCSV(filteredTasks)}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Exportar Todo
-                </Button>
-            </div>
-            )}
-        </div>
-        {/* FILTROS */}
-        <div className="mt-4 flex flex-col md:flex-row gap-2">
-            {/* BUSCADOR */}
-            <Input
-            placeholder="Buscar por título o descripción..."
-            value={filters.searchTerm}
-            onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-            className="max-w-sm"
-            />
-
-            {/* FILTRO POR USUARIO */}
-            <Select
-            value={filters.user}
-            onValueChange={(value) => handleFilterChange('user', value)}
-            >
-            <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Filtrar por usuario" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">Todos los Usuarios</SelectItem>
-                {users.map((user) => (
-                <SelectItem key={user.id} value={user.id}>
-                    {user.name}
-                </SelectItem>
-                ))}
-            </SelectContent>
-            </Select>
-
-            {/* FILTRO POR ESTADO */}
-            <Select
-            value={filters.status}
-            onValueChange={(value) => handleFilterChange('status', value)}
-            >
-            <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Filtrar por estado" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">Todos los Estados</SelectItem>
-                <SelectItem value="todo">Por hacer</SelectItem>
-                <SelectItem value="in-progress">En progreso</SelectItem>
-                <SelectItem value="done">Hecho</SelectItem>
-                <SelectItem value="archived">Archivado</SelectItem>
-            </SelectContent>
-            </Select>
-            
-            {/* FILTRO POR DIA */}
-            <Select
-            value={filters.day}
-            onValueChange={(value) => handleFilterChange('day', value)}
-            >
-            <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Filtrar por día" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">Todos los Días</SelectItem>
-                {Object.entries(dayMap).map(([key, value]) => (
-                <SelectItem key={key} value={key}>{value}</SelectItem>
-                ))}
-            </SelectContent>
-            </Select>
         </div>
       </CardHeader>
       {/* SELECTOR VISTA */}
       {canManageTasks && (
       <CardContent>
           <Tabs defaultValue="active">
-             <TabsList className="mb-4">
-                <TabsTrigger value="active">Activas</TabsTrigger>
-                <TabsTrigger value="archived">Archivadas</TabsTrigger>
-            </TabsList>
+             <div className="flex items-center justify-between mb-4">
+                <TabsList>
+                    <TabsTrigger value="active">Activas</TabsTrigger>
+                    <TabsTrigger value="archived">Archivadas</TabsTrigger>
+                </TabsList>
+                {/* CREAR / EXPORTAR */}
+                <div className="flex items-center gap-2">
+                    <Button onClick={() => setIsTaskCreatorOpen(true)} className="bg-green-600 hover:bg-green-700 text-white">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Crear Tarea
+                    </Button>
+                    <Button variant="outline" onClick={() => exportToCSV(filteredTasks)} className="bg-white border-gray-300 shadow-sm hover:bg-gray-50">
+                        <Download className="mr-2 h-4 w-4" />
+                        Exportar Todo
+                    </Button>
+                </div>
+             </div>
+             
+             {/* FILTROS */}
+             <div className="mb-4 flex flex-col md:flex-row gap-2">
+                {/* BUSCADOR */}
+                <Input
+                placeholder="Buscar por título o descripción..."
+                value={filters.searchTerm}
+                onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                className="max-w-sm"
+                />
+
+                {/* FILTRO POR USUARIO */}
+                <Select
+                value={filters.user}
+                onValueChange={(value) => handleFilterChange('user', value)}
+                >
+                <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectValue placeholder="Filtrar por usuario" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Todos los Usuarios</SelectItem>
+                    {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                        {user.name}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+
+                {/* FILTRO POR ESTADO */}
+                <Select
+                value={filters.status}
+                onValueChange={(value) => handleFilterChange('status', value)}
+                >
+                <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectValue placeholder="Filtrar por estado" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Todos los Estados</SelectItem>
+                    <SelectItem value="todo">Por hacer</SelectItem>
+                    <SelectItem value="in-progress">En progreso</SelectItem>
+                    <SelectItem value="done">Hecho</SelectItem>
+                    <SelectItem value="archived">Archivado</SelectItem>
+                </SelectContent>
+                </Select>
+                
+                {/* FILTRO POR DIA */}
+                <Select
+                value={filters.day}
+                onValueChange={(value) => handleFilterChange('day', value)}
+                >
+                <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectValue placeholder="Filtrar por día" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Todos los Días</SelectItem>
+                    {Object.entries(dayMap).map(([key, value]) => (
+                    <SelectItem key={key} value={key}>{value}</SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </div>
             <TabsContent value="active">
                 <TasksTable tasks={activeTasks} onEdit={setEditingTask} canManageTasks={canManageTasks} />
             </TabsContent>
