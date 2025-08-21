@@ -9,12 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import type { DaysOfWeek, Task, User } from '@/types';
 import { cn } from '@/lib/utils';
 import { User as UserIcon, PlusCircle, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Ellipsis } from 'lucide-react';
@@ -26,80 +20,11 @@ import { es, enUS } from 'date-fns/locale';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CreateTaskModal from '@/components/create-task-modal';
 import NoveltyBanner from '@/components/novelty-banner';
-
-const priorityClasses = {
-  high: 'bg-red-100',
-  medium: 'bg-yellow-100',
-  low: 'bg-green-100',
-};
-
-const priorityBarClasses = {
-  high: '#ef4444',
-  medium: '#f59e0b',
-  low: '#22c55e',
-}
-
-const priorityText = {
-  high: 'CUANTO ANTES',
-  medium: 'CUANDO SEA POSIBLE',
-  low: 'AVANZAR EN MOMENTOS LIBRES',
-};
-
-const priorityTextColor = {
-  high: 'text-red-900',
-  medium: 'text-amber-600',
-  low: 'text-blue-600',
-}
+import { TaskCard } from '@/components/task-card';
 
 const priorityOrder = { high: 1, medium: 2, low: 3 };
 
-const statusMap: { [key: string]: string } = {
-    todo: 'Por hacer',
-    'in-progress': 'En progreso',
-    done: 'Hecho',
-};
 
-const statusColors: { [key: string]: string } = {
-  todo: 'hsl(var(--status-todo))',
-  'in-progress': 'hsl(var(--status-in-progress))',
-  done: 'hsl(var(--status-done))',
-};
-
-const TaskStatusChanger = ({ task, canChangeStatus }: { task: Task; canChangeStatus: boolean }) => {
-  const { updateTask } = useContext(DataContext);
-  const statuses = ['todo', 'in-progress', 'done'];
-
-  if (!canChangeStatus) {
-    return (
-      <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[task.status] }} />
-          <span className="text-xs font-semibold">{statusMap[task.status]}</span>
-      </div>
-    );
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="flex items-center gap-2 ml-auto -mr-2 hover:bg-transparent hover:text-foreground">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[task.status] }} />
-            <span className="text-xs font-semibold">{statusMap[task.status]}</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {statuses.map(status => (
-          <DropdownMenuItem 
-            key={status} 
-            onSelect={() => updateTask({ ...task, status: status as Task['status'] })}
-            disabled={task.status === status}
-          >
-            {statusMap[status]}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
 
 
 export default function UserAgendaPage() {
@@ -285,30 +210,16 @@ export default function UserAgendaPage() {
                           <div className="space-y-3 p-2 min-h-[50px]">
                             {userTasks.length > 0 ? userTasks.map(task => {
                                 const canChangeStatus = canManageTasks || currentUser?.id === task.userId;
-                                // task card
                                 return (
-                                  <div
+                                  <TaskCard
                                     key={task.id}
+                                    task={task}
+                                    canChangeStatus={canChangeStatus}
+                                    variant="canvas"
                                     draggable={canManageTasks}
-                                    onDragStart={(e) => handleDragStart(e, task.id)}
-                                    className={cn(
-                                      'relative p-3 flex flex-col rounded-md shadow-lg transition-all', 
-                                      canManageTasks ? 'cursor-grab active:cursor-grabbing' : 'cursor-default', 
-                                      priorityClasses[task.priority],
-                                      task.status === 'done' && 'opacity-60'
-                                    )}
-                                    style={{ borderTop: `10px solid ${priorityBarClasses[task.priority]}` }}
-                                  >
-                                    <h4 className={cn("font-bold text-sm mb-1 pb-1 border-b border-black/10", task.status === 'done' && 'line-through')}>{task.title}</h4>
-                                    {task.startTime && <p className="text-xs font-semibold text-gray-800/90">{task.startTime} {task.duration && `- (${task.duration} m)`}</p>}
-                                    <p className="flex-grow text-xs text-gray-800/90 overflow-auto">{task.description}</p>
-                                    
-                                    <div className="mt-auto pt-1 flex items-center justify-between text-xs text-gray-600/90">
-                                      <span className={cn("font-bold", priorityTextColor[task.priority])}>{priorityText[task.priority]}</span>   
-                                      <TaskStatusChanger task={task} canChangeStatus={canChangeStatus} />
-                                    </div>
-                                    
-                                  </div>
+                                    onDragStart={handleDragStart}
+                                    canManageTasks={canManageTasks}
+                                  />
                                 );
                               }) : (
                                 <div className="flex flex-col items-center justify-center text-center h-full pt-4">

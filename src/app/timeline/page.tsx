@@ -13,112 +13,22 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CreateTaskModal from '@/components/create-task-modal';
 import NoveltyBanner from '@/components/novelty-banner';
+import { TaskCard } from '@/components/task-card';
 
 
-const priorityClasses = {
-  high: 'bg-red-100',
-  medium: 'bg-yellow-100',
-  low: 'bg-green-100',
-};
 
-const priorityBarClasses = {
-  high: '#ef4444', medium: '#f59e0b', low: '#22c55e',
-};
-
-const priorityText = {
-  high: 'CUANTO ANTES',
-  medium: 'CUANDO SEA POSIBLE',
-  low: 'AVANZAR EN MOMENTOS LIBRES',
-};
-
-const priorityTextColor = {
-  high: 'text-red-900',
-  medium: 'text-amber-600',
-  low: 'text-blue-600',
-}
-
-const statusMap: { [key: string]: string } = {
-    todo: 'Por hacer',
-    'in-progress': 'En progreso',
-    done: 'Hecho',
-};
-
-const statusColors: { [key: string]: string } = {
-  todo: 'hsl(var(--status-todo))',
-  'in-progress': 'hsl(var(--status-in-progress))',
-  done: 'hsl(var(--status-done))',
-};
 
 const shifts = [
   { start: '08:00', end: '13:00' },
   { start: '18:00', end: '22:30' }
 ];
 
-const TaskCard = ({ task, canChangeStatus }: { task: Task, canChangeStatus: boolean }) => {
-    return (
-        <div
-            key={task.id}
-            className={cn(
-                'relative p-3 flex flex-col rounded-lg shadow-lg transition-all', 
-                priorityClasses[task.priority],
-                task.status === 'done' && 'opacity-60'
-            )}
-            style={{ borderTop: `10px solid ${priorityBarClasses[task.priority]}` }}
-        >
-            <h4 className={cn("font-bold text-sm mb-1 pb-1 border-b border-black/10", task.status === 'done' && 'line-through')}>{task.title}</h4>
-            {task.startTime && <p className="text-xs font-semibold text-gray-800/90">{task.startTime} {task.duration && `- (${task.duration} m)`}</p>}
-            <div className="mt-auto pt-1 flex items-center justify-between text-xs text-gray-600/90">
-                <span className={cn("font-bold", priorityTextColor[task.priority])}>{priorityText[task.priority]}</span>   
-                <TaskStatusChanger task={task} canChangeStatus={canChangeStatus} />
-            </div>
-        </div>
-    )
-}
 
-const TaskStatusChanger = ({ task, canChangeStatus }: { task: Task; canChangeStatus: boolean }) => {
-  const { updateTask } = useContext(DataContext);
-  const statuses = ['todo', 'in-progress', 'done'];
 
-  if (!canChangeStatus) {
-    return (
-      <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[task.status] }} />
-          <span className="text-xs font-semibold">{statusMap[task.status]}</span>
-      </div>
-    );
-  }
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="flex items-center gap-2 ml-auto -mr-2 hover:bg-transparent hover:text-foreground">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[task.status] }} />
-            <span className="text-xs font-semibold">{statusMap[task.status]}</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {statuses.map(status => (
-          <DropdownMenuItem 
-            key={status} 
-            onSelect={() => updateTask({ ...task, status: status as Task['status'] })}
-            disabled={task.status === status}
-          >
-            {statusMap[status]}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
 
 const timeToMinutes = (time: string): number => {
   if (!time || !time.includes(':')) return 0;
@@ -203,7 +113,7 @@ const ShiftColumn = ({ totalHeight, activeSlots }: { totalHeight: number, active
     )
 }
 
-const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots, totalHeight, onAddTask }: { user: User, currentUser: User | null, tasksForDay: Task[], selectedDate: Date, activeSlots: { [key: string]: boolean }, totalHeight: number, onAddTask: (date: Date, userId: string) => void }) => {
+const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots, totalHeight, onAddTask, onDragStart, onDragOver, onDragLeave, onDrop, dragOverTarget, canManageTasks }: { user: User, currentUser: User | null, tasksForDay: Task[], selectedDate: Date, activeSlots: { [key: string]: boolean }, totalHeight: number, onAddTask: (date: Date, userId: string) => void, onDragStart: (e: React.DragEvent<HTMLDivElement>, taskId: string) => void, onDragOver: (e: React.DragEvent<HTMLDivElement>, userId: string, date: Date) => void, onDragLeave: () => void, onDrop: (e: React.DragEvent<HTMLDivElement>, userId: string, date: Date) => void, dragOverTarget: { userId: string, date: Date } | null, canManageTasks: boolean }) => {
     const dayKey = format(selectedDate, 'EEEE', { locale: enUS });
     
     // Sort all tasks by start time (tasks with start time first, ordered by time, then tasks without start time)
@@ -216,7 +126,7 @@ const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots,
         return 0;
     });
     
-    const canManageTasks = currentUser?.role === 'admin' || currentUser?.role === 'owner';
+
 
     const workDay = user.workHours[dayKey as keyof typeof user.workHours];
 
@@ -238,13 +148,31 @@ const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots,
 
         if (calculatedHeight <= 0) return null;
 
+        const isDropTarget = dragOverTarget?.userId === user.id;
+        
         return (
-            <div className="absolute w-full p-2" style={{ top: `${top}px`, height: `${calculatedHeight}px`, backgroundColor: `${user.color}1A` }}>
+            <div 
+                className={cn("absolute w-full p-2 transition-colors duration-200", isDropTarget && "bg-primary/20")} 
+                style={{ top: `${top}px`, height: `${calculatedHeight}px`, backgroundColor: isDropTarget ? undefined : `${user.color}1A` }}
+                onDragOver={(e) => onDragOver(e, user.id, selectedDate)}
+                onDrop={(e) => onDrop(e, user.id, selectedDate)}
+                onDragLeave={onDragLeave}
+            >
                 <div className="text-xs font-semibold opacity-70 mb-2" style={{color: user.color}}>{workDay.start || shifts[0].start} - {workDay.end || shifts[1].end} ({workDay.virtual ? 'Virtual' : 'Presencial'})</div>
                 <div className="space-y-2 overflow-hidden" style={{ maxHeight: canManageTasks ? `${calculatedHeight - 60}px` : `${calculatedHeight - 30}px` }}>
                   {sortedTasks.map(task => {
                     const canChangeStatus = canManageTasks || currentUser?.id === task.userId;
-                    return <TaskCard key={task.id} task={task} canChangeStatus={canChangeStatus} />;
+                    return (
+                      <TaskCard 
+                        key={task.id} 
+                        task={task} 
+                        canChangeStatus={canChangeStatus} 
+                        variant="timeline" 
+                        draggable={canManageTasks}
+                        onDragStart={onDragStart}
+                        canManageTasks={canManageTasks}
+                      />
+                    );
                   })}
                 </div>
                 {canManageTasks && (
@@ -277,10 +205,14 @@ const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots,
 
 const DailyTimeline = ({ selectedDate, onAddTask }: { selectedDate: Date, onAddTask: (date: Date, userId: string) => void }) => {
   const { users, currentUser } = useContext(UserContext);
-  const { tasks, calendarEvents } = useContext(DataContext);
+  const { tasks, calendarEvents, updateTask, refreshData } = useContext(DataContext);
   const [columnWidths, setColumnWidths] = useState<{ [key: string]: number }>({});
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverTarget, setDragOverTarget] = useState<{ userId: string, date: Date } | null>(null);
   const isResizing = useRef<string | null>(null);
   const initialX = useRef<number>(0);
+  
+  const canManageTasks = currentUser?.role === 'admin' || currentUser?.role === 'owner';
   
   const dayKey = useMemo(() => format(selectedDate, 'EEEE', { locale: enUS }), [selectedDate]);
   const dayIndex = useMemo(() => getDay(selectedDate), [selectedDate]);
@@ -398,6 +330,35 @@ const DailyTimeline = ({ selectedDate, onAddTask }: { selectedDate: Date, onAddT
     document.body.style.cursor = 'default';
   }, []);
 
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, taskId: string) => {
+    if (!canManageTasks) return;
+    setDraggedTaskId(taskId);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, userId: string, date: Date) => {
+    e.preventDefault();
+    if (!canManageTasks) return;
+    setDragOverTarget({ userId, date });
+  };
+
+  const handleDragLeave = () => setDragOverTarget(null);
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, targetUserId: string, targetDate: Date) => {
+    e.preventDefault();
+    if (!canManageTasks || !draggedTaskId) return;
+    const taskToMove = tasks.find(t => t.id === draggedTaskId);
+    if (taskToMove) {
+      await updateTask({
+        ...taskToMove,
+        userId: targetUserId,
+        startDate: targetDate.toISOString(),
+      });
+    }
+    setDraggedTaskId(null);
+    setDragOverTarget(null);
+    refreshData();
+  };
+
   useEffect(() => {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -472,6 +433,12 @@ const DailyTimeline = ({ selectedDate, onAddTask }: { selectedDate: Date, onAddT
                 activeSlots={activeSlots} 
                 totalHeight={totalHeight} 
                 onAddTask={onAddTask}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                dragOverTarget={dragOverTarget}
+                canManageTasks={canManageTasks}
               />
             )
           })}
