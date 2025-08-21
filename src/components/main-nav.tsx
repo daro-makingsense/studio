@@ -27,8 +27,8 @@ import { UserContext } from "@/context/UserContext"
 const navItems = [
   { href: "/canvas", label: "Agenda Semanal", icon: LayoutGrid },
   { href: "/timeline", label: "Cronograma Diario", icon: Clock },
-  { href: "/tasks", label: "Tareas", icon: ListTodo },
   { href: "/calendar", label: "Calendario", icon: Calendar },
+  { href: "/tasks", label: "Tareas", icon: ListTodo, adminOnly: true },
   { href: "/admin", label: "Admin", icon: Shield, adminOnly: true },
 ]
 

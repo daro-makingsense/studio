@@ -71,6 +71,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useSession } from 'next-auth/react';
 
 
 const priorityVariant = {
@@ -717,13 +718,32 @@ export default function TasksManager() {
     searchTerm: '',
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [isClient, setIsClient] = useState(false);
+  const { data: session, status } = useSession()
+
+    if (status === 'loading') return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Cargando...</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-32 w-full" />
+        </CardContent>
+      </Card>
+    )
+    
+    if (session && session.user && !(session.user.role === 'admin' || session.user.role === 'owner')) {
+      return (
+        <div className="container mx-auto py-10 flex flex-col items-center justify-center text-center">
+            <Lock className="h-16 w-16 text-destructive mb-4"/>
+            <h1 className="text-3xl font-bold font-headline">Acceso Denegado</h1>
+            <p className="text-lg text-muted-foreground mt-2">
+                No tienes los permisos necesarios para acceder a esta sección.
+            </p>
+        </div>
+      )
+    }
   
   const canManageTasks = currentUser?.role === 'admin' || currentUser?.role === 'owner';
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -781,10 +801,6 @@ export default function TasksManager() {
   };
   
   const [isTaskCreatorOpen, setIsTaskCreatorOpen] = useState(false);
-
-  if (!isClient) {
-    return <Card><CardHeader><CardTitle>Cargando Tareas...</CardTitle></CardHeader><CardContent><Skeleton className="h-32 w-full" /></CardContent></Card>;
-  }
 
   return (
     <>

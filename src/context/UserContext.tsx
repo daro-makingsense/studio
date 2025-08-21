@@ -2,10 +2,8 @@
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
 import { userService } from '@/lib/supabase-service';
-import type { DaysOfWeek, Task, User, WorkDay } from '@/types';
-import { Position } from 'postcss';
-
-const currentUserId = 'user-1'; 
+import type { User } from '@/types';
+import { useSession } from 'next-auth/react';
 
 type UserContextType = {
   users: User[];
@@ -31,6 +29,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<Error | null>(null);
   const [initialized, setInitialized] = useState(false);
 
+  const { data: session, status } = useSession()
+
   // Load users from Supabase on mount
   useEffect(() => {
     const loadUsers = async () => {
@@ -52,26 +52,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     loadUsers();
   }, []);
 
-  // Update current user whenever users change
   useEffect(() => {
-    const user = users.find(u => u.id === currentUserId) || null;
-    setCurrentUser(user);
-  }, [users]);
-
-  // Save to Supabase whenever users change (after initialization)
-  // useEffect(() => {
-  //   if (!initialized || users.length === 0) return;
-
-  //   const saveUsers = async () => {
-  //     try {
-  //       await userService.upsertMany(users);
-  //     } catch (error) {
-  //       console.error('Error saving users to Supabase:', error);
-  //     }
-  //   };
-
-  //   saveUsers();
-  // }, [users, initialized]);
+    if (session?.user?.id && users.length > 0) {
+      const user = users.find(u => u.id === session.user.id) || null;
+      setCurrentUser(user);
+    } else if (!session?.user?.id) {
+      // Clear current user if no session
+      setCurrentUser(null);
+    }
+  }, [session, users]);
   
   const updateUserList = (updater: User[] | ((prevState: User[]) => User[])) => {
     setUsers(updater);
