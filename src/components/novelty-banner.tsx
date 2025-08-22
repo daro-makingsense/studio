@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Megaphone, X } from 'lucide-react';
-import { startOfWeek, endOfWeek, isWithinInterval, format } from 'date-fns';
+import { startOfWeek, endOfWeek, format } from 'date-fns';
 
 import type { Novelty, User } from '@/types';
 
@@ -79,20 +79,13 @@ export default function NoveltyBanner({ novelties, currentDate, currentUser, onD
               {novelty.description}
             </AlertDescription>
           )}
-          {/* <Button
-            variant="ghost"
-            size="sm"
-            className="absolute top-2 right-2 h-6 w-6 p-0 hover:bg-blue-100"
-            onClick={(e) => handleDismiss(novelty.id, e)}
-            title="Descartar novedad"
-          >
-            <X className="h-4 w-4 text-blue-600" />
-          </Button> */}
           <div className="absolute top-2 right-2 z-10 flex items-center justify-center">
             <Button 
+              className="h-8 w-8 hover:bg-blue-100 hover:text-blue-800" 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8 hover:bg-blue-100 hover:text-blue-800" 
+              title="Descartar novedad"
+              onClick={(e) => handleDismiss(novelty.id, e)}
             >
               <X className="h-4 w-4 text-blue-600" />
             </Button>

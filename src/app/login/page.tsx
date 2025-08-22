@@ -38,7 +38,7 @@ export default function LoginPage() {
                 <div className="pt-4">
                   <Button
                     onClick={() => signIn("google", { callbackUrl: "/canvas" })}
-                    className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 shadow-sm flex items-center justify-center gap-3 h-12 text-base font-medium"
+                    className="w-full bg-white hover:bg-gray-50 hover:text-foreground text-gray-900 border border-gray-300 shadow-sm flex items-center justify-center gap-3 h-12 text-base font-medium"
                     variant="outline"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
