@@ -139,10 +139,20 @@ const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots,
         for (const slot of allTimeSlots) {
           const slotMinutes = timeToMinutes(slot);
           const slotHeight = activeSlots[slot] ? SLOT_HEIGHT : COLLAPSED_SLOT_HEIGHT;
-          if (slotMinutes < timeToMinutes(workDay.start || shifts[0].start)) {
-            top += slotHeight;
-          } else if (slotMinutes < timeToMinutes(workDay.end || shifts[1].end)) {
-            calculatedHeight += slotHeight;
+          // Only calculate positioning if user has specific start/end times
+          if (workDay.start && workDay.end) {
+            if (slotMinutes < timeToMinutes(workDay.start)) {
+              top += slotHeight;
+            } else if (slotMinutes <= timeToMinutes(workDay.end)) {
+              calculatedHeight += slotHeight;
+            }
+          } else {
+            // For users without specific times, use full shift coverage
+            if (slotMinutes < timeToMinutes(shifts[0].start)) {
+              top += slotHeight;
+            } else if (slotMinutes <= timeToMinutes(shifts[1].end)) {
+              calculatedHeight += slotHeight;
+            }
           }
         }
 
@@ -158,7 +168,9 @@ const UserColumn = ({ user, currentUser, tasksForDay, selectedDate, activeSlots,
                 onDrop={(e) => onDrop(e, user.id, selectedDate)}
                 onDragLeave={onDragLeave}
             >
-                <div className="text-xs font-semibold opacity-70 mb-2" style={{color: user.color}}>{workDay.start || shifts[0].start} - {workDay.end || shifts[1].end} ({workDay.virtual ? 'Virtual' : 'Presencial'})</div>
+                <div className="text-xs font-semibold opacity-70 mb-2" style={{color: user.color}}>
+                  {workDay.start && workDay.end ? `${workDay.start} - ${workDay.end}` : 'Horario Completo'} ({workDay.virtual ? 'Virtual' : 'Presencial'})
+                </div>
                 <div className="space-y-2 overflow-hidden" style={{ maxHeight: canManageTasks ? `${calculatedHeight - 60}px` : `${calculatedHeight - 30}px` }}>
                   {sortedTasks.map(task => {
                     const canChangeStatus = canManageTasks || currentUser?.id === task.userId;
@@ -279,7 +291,32 @@ const DailyTimeline = ({ selectedDate, onAddTask }: { selectedDate: Date, onAddT
         for (const user of usersForDay) {
             const workDay = user.workHours[dayKey];
             if (workDay) {
-                if (slotMinutes >= timeToMinutes(workDay.start || shifts[0].start) && slotMinutes < timeToMinutes(workDay.end || shifts[0].end)) {
+                if (workDay.start && workDay.end) {
+                    // Include slots from start time up to and including end time for visual block coverage
+                    // This ensures the visual block extends to the full end time
+                    if (slotMinutes >= timeToMinutes(workDay.start) && slotMinutes <= timeToMinutes(workDay.end)) {
+                        isSlotActive = true;
+                        break;
+                    }
+                } else {
+                    // For users without specific times, consider full shift hours
+                    if (slotMinutes >= timeToMinutes(shifts[0].start) && slotMinutes <= timeToMinutes(shifts[1].end)) {
+                        isSlotActive = true;
+                        break;
+                    }
+                }
+            }
+        }
+         if(isSlotActive) {
+            active[slot] = true;
+            continue;
+        }
+
+        for (const task of tasksForDay) {
+            if(task.startTime && task.status !== 'archived') {
+                const taskStartMinutes = timeToMinutes(task.startTime);
+                const taskEndMinutes = taskStartMinutes + (task.duration || SLOT_DURATION);
+                if (slotMinutes >= taskStartMinutes && slotMinutes < taskEndMinutes) {
                     isSlotActive = true;
                     break;
                 }
