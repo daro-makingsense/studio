@@ -148,7 +148,7 @@ export default function UserAgendaPage() {
             });
             
             return (
-              <div key={date.toString()} className="flex flex-col gap-4 border-r-4 border-foreground/20 last:border-r-0 px-2">
+              <div key={date.toString()} className="flex flex-col gap-1 border-r-4 border-foreground/20 last:border-r-0 px-2">
                 
                 {/* day header */}
                 <div className="text-center sticky top-0 bg-background py-2">
@@ -158,17 +158,19 @@ export default function UserAgendaPage() {
                     <p className="text-sm text-muted-foreground">{format(date, 'd/M')}</p>
                 </div>
                 
-                {/* events for day */}
-                 {eventsForDay.length > 0 && (
-                    <div className="space-y-2">
-                        {eventsForDay.map(event => (
+                {/* events for day - always reserve space */}
+                <div className="space-y-2 min-h-[60px]">
+                    {eventsForDay.length > 0 ? (
+                        eventsForDay.map(event => (
                             <div key={event.id} className="flex items-center gap-2 p-2 rounded-md bg-accent/50 text-accent-foreground text-sm">
                                 <CalendarIcon className="h-4 w-4 shrink-0" />
                                 <span className="font-semibold truncate">{event.title}</span>
                             </div>
-                        ))}
-                    </div>
-                )}
+                        ))
+                    ) : (
+                        <div className="h-[60px]"></div>
+                    )}
+                </div>
 
                 {/* users and tasks for day */}
                 <div className="flex flex-col gap-4">
