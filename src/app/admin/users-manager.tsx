@@ -17,8 +17,8 @@ import { PlusCircle, Trash2, User as UserIcon } from 'lucide-react';
 import type { User } from '@/types';
 import { UserContext } from '@/context/UserContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { userService } from '@/lib/supabase-service';
 import { useToast } from '@/hooks/use-toast';
+import { userService } from '@/services/user-service';
 
 const timeRegex = /^(?:2[0-3]|[01]?[0-9]):[0-5][0-9]$/;
 

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
-import { userService } from '@/lib/supabase-service';
+
 import type { User } from '@/types';
 import { useSession } from 'next-auth/react';
+import { userService } from '@/services/user-service';
 
 type UserContextType = {
   users: User[];
