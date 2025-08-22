@@ -17,6 +17,8 @@ type DataContextType = {
   setNovelties: React.Dispatch<React.SetStateAction<Novelty[]>>;
   addNovelty: (novelty: Novelty) => void;
   updateNovelty: (novelty: Novelty) => void;
+  deleteNovelty: (noveltyId: string) => void;
+  markNoveltyAsViewed: (noveltyId: string, userId: string) => Promise<void>;
   loading: boolean;
   error: Error | null;
   refreshData: () => void;
@@ -38,6 +40,8 @@ export const DataContext = createContext<DataContextType>({
   setNovelties: () => {},
   addNovelty: () => {},
   updateNovelty: () => {},
+  deleteNovelty: () => {},
+  markNoveltyAsViewed: () => Promise.resolve(),
   loading: true,
   error: null,
   refreshData: () => {},
@@ -142,6 +146,26 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const deleteNovelty = async (noveltyId: string) => {
+    try {
+      await noveltyService.delete(noveltyId);
+      setNovelties(currentNovelties => currentNovelties.filter(n => n.id !== noveltyId));
+    } catch (error) {
+      console.error('Error deleting novelty:', error);
+      throw error; // Propagate error to caller
+    }
+  };
+
+  const markNoveltyAsViewed = async (noveltyId: string, userId: string) => {
+    try {
+      const updated = await noveltyService.markAsViewed(noveltyId, userId);
+      setNovelties(currentNovelties => currentNovelties.map(n => n.id === noveltyId ? updated : n));
+    } catch (error) {
+      console.error('Error marking novelty as viewed:', error);
+      throw error; // Propagate error to caller
+    }
+  };
+
   return (
     <DataContext.Provider value={{
         tasks, 
@@ -156,6 +180,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setNovelties,
         addNovelty,
         updateNovelty,
+        deleteNovelty,
+        markNoveltyAsViewed,
         loading,
         error,
         refreshData: loadData,

@@ -1,6 +1,25 @@
 import { supabase } from './supabase';
 import type { User, Task, CalendarEvent, Novelty } from '@/types';
 
+// Utility function to normalize event dates (handles both old datetime and new date formats)
+const normalizeEventDate = (dateString: string): string => {
+  // If it's already in YYYY-MM-DD format, return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return dateString;
+  }
+  // If it's an ISO datetime, extract just the date part without timezone conversion
+  // This handles strings like "2025-08-21T21:28:55.979Z"
+  if (/^\d{4}-\d{2}-\d{2}T/.test(dateString)) {
+    return dateString.split('T')[0];
+  }
+  // Fallback: try to parse as date and format (should rarely be needed)
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // User operations
 export const userService = {
   async getAll(): Promise<User[]> {
@@ -42,28 +61,54 @@ export const userService = {
   },
 
   async create(user: User): Promise<User> {
+    const { workHours, frequentTasks, ...etc } = user as unknown as any;
+    const payload = {
+      work_hours: workHours,
+      frequent_tasks: frequentTasks,
+      ...etc,
+    };
+
     const { data, error } = await supabase
       .from('users')
-      .insert({
-        ...user,
-      })
+      .insert(payload)
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+
+    const createdUser: User = {
+      workHours: (data as any).work_hours,
+      frequentTasks: (data as any).frequent_tasks,
+      ...data,
+    };
+
+    return createdUser;
   },
 
   async update(id: string, updates: Partial<User>): Promise<User> {
+    const { workHours, frequentTasks, ...rest } = updates as unknown as any;
+    const updatePayload = {
+      ...rest,
+      ...(typeof workHours !== 'undefined' ? { work_hours: workHours } : {}),
+      ...(typeof frequentTasks !== 'undefined' ? { frequent_tasks: frequentTasks } : {}),
+    };
+
     const { data, error } = await supabase
       .from('users')
-      .update(updates)
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+
+    const updatedUser: User = {
+      workHours: (data as any).work_hours,
+      frequentTasks: (data as any).frequent_tasks,
+      ...data,
+    };
+
+    return updatedUser;
   },
 
   async upsertMany(users: User[]): Promise<User[]> {
@@ -100,6 +145,7 @@ export const taskService = {
         endDate: task.end_date,
         days: task.days,
         startTime: task.start_time,
+        duration: task.duration,
         notes: task.notes,
       };
     });
@@ -143,7 +189,21 @@ export const taskService = {
       .single();
     
     if (error) throw error;
-    return data;
+    
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      status: data.status,
+      userId: data.user_id,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      days: data.days,
+      startTime: data.start_time,
+      duration: data.duration,
+      notes: data.notes,
+    };
   },
 
   async update(id: string, updates: Partial<Task>): Promise<Task> {
@@ -162,7 +222,21 @@ export const taskService = {
       .single();
     
     if (error) throw error;
-    return data;
+    
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      status: data.status,
+      userId: data.user_id,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      days: data.days,
+      startTime: data.start_time,
+      duration: data.duration,
+      notes: data.notes,
+    };
   },
 
   async delete(id: string): Promise<void> {
@@ -194,7 +268,16 @@ export const calendarEventService = {
       .order('start', { ascending: true });
     
     if (error) throw error;
-    return data || [];
+    if (!data) return [];
+
+    // Normalize event dates to handle both old datetime and new date formats
+    const normalizedEvents = data.map((event) => ({
+      ...event,
+      start: event.start.split('T')[0],
+      end: event.end.split('T')[0],
+    }));
+
+    return normalizedEvents;
   },
 
   async create(event: CalendarEvent): Promise<CalendarEvent> {
@@ -268,11 +351,12 @@ export const noveltyService = {
   },
 
   async update(id: string, updates: Partial<Novelty>): Promise<Novelty> {
+    const { updatedAt, ...etc } = updates;
+    const payload = { updated_at: updatedAt, ...etc };
+
     const { data, error } = await supabase
       .from('novelties')
-      .update({
-        ...updates,
-      })
+      .update(payload)
       .eq('id', id)
       .select()
       .single();
@@ -303,5 +387,31 @@ export const noveltyService = {
     
     if (error) throw error;
     return data || [];
+  },
+
+  async markAsViewed(noveltyId: string, userId: string): Promise<Novelty> {
+    // First get the current novelty to add the user ID to the viewed array
+    const { data: currentNovelty, error: fetchError } = await supabase
+      .from('novelties')
+      .select('viewed')
+      .eq('id', noveltyId)
+      .single();
+    
+    if (fetchError) throw fetchError;
+    
+    const currentViewed = currentNovelty?.viewed || [];
+    const updatedViewed = currentViewed.includes(userId) 
+      ? currentViewed 
+      : [...currentViewed, userId];
+
+    const { data, error } = await supabase
+      .from('novelties')
+      .update({ viewed: updatedViewed })
+      .eq('id', noveltyId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 };

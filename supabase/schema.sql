@@ -1,6 +1,7 @@
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
+  email TEXT UNIQUE,
   name TEXT NOT NULL,
   positions JSONB DEFAULT '[]',
   role TEXT CHECK (role IN ('owner', 'admin', 'user')) NOT NULL,
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS novelties (
   description TEXT,
   start TEXT NOT NULL,
   "end" TEXT NOT NULL,
+  viewed TEXT[] DEFAULT '{}',
   updated_at TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
