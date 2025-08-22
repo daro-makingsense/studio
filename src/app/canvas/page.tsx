@@ -15,7 +15,7 @@ import { User as UserIcon, PlusCircle, Calendar as CalendarIcon, ChevronLeft, Ch
 import { UserContext } from '@/context/UserContext';
 import { DataContext } from '@/context/DataContext';
 import { Button } from '@/components/ui/button';
-import { format, startOfWeek, addDays, subWeeks, addWeeks, isWithinInterval, endOfWeek, isSameDay } from 'date-fns';
+import { format, startOfWeek, addDays, subWeeks, addWeeks, endOfWeek, isSameDay } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CreateTaskModal from '@/components/create-task-modal';
@@ -140,7 +140,12 @@ export default function UserAgendaPage() {
             const spanishDayName = format(date, 'EEEE', { locale: es });
             const usersForDay = users.filter(user => user.workHours[dayName].active || user.workHours[dayName].virtual);
             
-            const eventsForDay = calendarEvents.filter(event => isWithinInterval(date, { start: new Date(event.start), end: new Date(event.end) }));
+            // Format current date as YYYY-MM-DD for comparison with events
+            const dateString = format(date, 'yyyy-MM-dd');
+            const eventsForDay = calendarEvents.filter(event => {
+              // Simple date range comparison like tasks use (dates are already normalized from service)
+              return dateString >= event.start && dateString <= event.end;
+            });
             
             return (
               <div key={date.toString()} className="flex flex-col gap-4 border-r-4 border-foreground/20 last:border-r-0 px-2">
@@ -177,9 +182,9 @@ export default function UserAgendaPage() {
                           return task.days.includes(dayName as DaysOfWeek);
                         }
                         // sacar tareas completadas si ya paso el deadline
-                        if (task.status === 'done' && task.endDate && date > new Date(task.endDate)) return false;
+                        if (task.status === 'done' && task.endDate && dateString > task.endDate) return false;
                         
-                        return date >= new Date(task.startDate);
+                        return dateString >= task.startDate;
                       }
                       return false;
                     }).sort((a,b) => {

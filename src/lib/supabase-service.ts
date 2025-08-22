@@ -1,6 +1,25 @@
 import { supabase } from './supabase';
 import type { User, Task, CalendarEvent, Novelty } from '@/types';
 
+// Utility function to normalize event dates (handles both old datetime and new date formats)
+const normalizeEventDate = (dateString: string): string => {
+  // If it's already in YYYY-MM-DD format, return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return dateString;
+  }
+  // If it's an ISO datetime, extract just the date part without timezone conversion
+  // This handles strings like "2025-08-21T21:28:55.979Z"
+  if (/^\d{4}-\d{2}-\d{2}T/.test(dateString)) {
+    return dateString.split('T')[0];
+  }
+  // Fallback: try to parse as date and format (should rarely be needed)
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // User operations
 export const userService = {
   async getAll(): Promise<User[]> {
@@ -249,7 +268,16 @@ export const calendarEventService = {
       .order('start', { ascending: true });
     
     if (error) throw error;
-    return data || [];
+    if (!data) return [];
+
+    // Normalize event dates to handle both old datetime and new date formats
+    const normalizedEvents = data.map((event) => ({
+      ...event,
+      start: event.start.split('T')[0],
+      end: event.end.split('T')[0],
+    }));
+
+    return normalizedEvents;
   },
 
   async create(event: CalendarEvent): Promise<CalendarEvent> {

@@ -13,7 +13,6 @@ import {
   startOfWeek,
   add,
   sub,
-  isWithinInterval,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Info, Ban, PlusCircle } from 'lucide-react';
@@ -84,20 +83,28 @@ export default function CalendarPage() {
   const lastDayOfMonth = endOfMonth(currentDate);
 
   const daysInMonth = eachDayOfInterval({
-    start: startOfWeek(firstDayOfMonth, { locale: es }),
-    end: endOfWeek(lastDayOfMonth, { locale: es }),
+    start: startOfWeek(firstDayOfMonth, { weekStartsOn: 0 }),
+    end: endOfWeek(lastDayOfMonth, { weekStartsOn: 0 }),
   });
 
   const nextMonth = () => setCurrentDate(add(currentDate, { months: 1 }));
   const prevMonth = () => setCurrentDate(sub(currentDate, { months: 1 }));
 
   function onSubmit(values: z.infer<typeof eventFormSchema>) {
+    // Format dates as simple date strings (YYYY-MM-DD) to avoid timezone issues
+    const formatDateString = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     const newEvent: CalendarEvent = {
       id: `event-${Date.now()}`,
       description: values.description ?? '',
       ...values,
-      start: values.start.toISOString(),
-      end: values.end.toISOString(),
+      start: formatDateString(values.start),
+      end: formatDateString(values.end),
     };
     addCalendarEvent(newEvent);
     toast({
@@ -264,9 +271,12 @@ export default function CalendarPage() {
         </div>
         <div className="grid h-[calc(100%-4rem)] grid-cols-7 grid-rows-6">
           {daysInMonth.map((day) => {
-             const eventsOnDay = calendarEvents.filter((event) => 
-                isWithinInterval(day, { start: new Date(event.start), end: new Date(event.end) })
-             );
+             // Format current day as YYYY-MM-DD for comparison
+             const dayString = format(day, 'yyyy-MM-dd');
+             const eventsOnDay = calendarEvents.filter((event) => {
+               // Simple date range comparison like tasks use (dates are already normalized from service)
+               return dayString >= event.start && dayString <= event.end;
+             });
             return (
               <div
                 key={day.toString()}

@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Megaphone, X } from 'lucide-react';
-import { startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { startOfWeek, endOfWeek, isWithinInterval, format } from 'date-fns';
 
 import type { Novelty, User } from '@/types';
 
@@ -29,16 +29,18 @@ export default function NoveltyBanner({ novelties, currentDate, currentUser, onD
       const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
       
       filteredNovelties = novelties.filter(n => {
-        const noveltyInterval = { start: new Date(n.start), end: new Date(n.end) };
-        const weekInterval = { start: weekStart, end: weekEnd };
+        // Use string comparison to avoid timezone issues
+        const weekStartString = format(weekStart, 'yyyy-MM-dd');
+        const weekEndString = format(weekEnd, 'yyyy-MM-dd');
 
         // Check for overlap between novelty interval and week interval
-        return noveltyInterval.start <= weekInterval.end && noveltyInterval.end >= weekInterval.start;
+        return n.start <= weekEndString && n.end >= weekStartString;
       });
     } else {
-      // Day mode: check if the selected date is within the novelty interval
+      // Day mode: check if the selected date is within the novelty interval using string comparison
+      const currentDateString = format(currentDate, 'yyyy-MM-dd');
       filteredNovelties = novelties.filter(n => 
-        isWithinInterval(currentDate, { start: new Date(n.start), end: new Date(n.end) })
+        currentDateString >= n.start && currentDateString <= n.end
       );
     }
     

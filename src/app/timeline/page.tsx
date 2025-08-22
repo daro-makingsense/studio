@@ -218,10 +218,11 @@ const DailyTimeline = ({ selectedDate, onAddTask }: { selectedDate: Date, onAddT
   const dayIndex = useMemo(() => getDay(selectedDate), [selectedDate]);
 
   const tasksForDay = useMemo(() => {
+    const dayString = format(selectedDate, 'yyyy-MM-dd');
     return tasks.filter(t => {
       if (t.status === 'archived') return false;
-      if (t.status === 'done' && t.endDate && selectedDate >= new Date(t.endDate)) return false;
-      return selectedDate >= new Date(t.startDate);
+      if (t.status === 'done' && t.endDate && dayString > t.endDate) return false;
+      return dayString >= t.startDate;
     });
   }, [tasks, selectedDate, dayIndex]);
 
@@ -250,7 +251,11 @@ const DailyTimeline = ({ selectedDate, onAddTask }: { selectedDate: Date, onAddT
 
 
   const eventsForDay = useMemo(() => {
-    return calendarEvents.filter(event => isWithinInterval(selectedDate, { start: new Date(event.start), end: new Date(event.end) }));
+    const dayString = format(selectedDate, 'yyyy-MM-dd');
+    return calendarEvents.filter(event => {
+      // Use same string comparison logic as calendar page to avoid timezone issues
+      return dayString >= event.start && dayString <= event.end;
+    });
   }, [calendarEvents, selectedDate]);
   
   const activeSlots = useMemo(() => {
@@ -471,20 +476,24 @@ export default function TimelinePage() {
     const hasTasks = tasks.some(t => {
         if (t.status === 'archived') return false;
         if (t.startDate) {
-            const taskStartDate = new Date(t.startDate);
-            const taskEndDate = t.endDate ? new Date(t.endDate) : new Date(8640000000000000);
-            if (!isWithinInterval(date, { start: taskStartDate, end: taskEndDate })) return false;
+            const dayString = format(date, 'yyyy-MM-dd');
+            // Use string comparison for date range check to avoid timezone issues
+            const taskEndDate = t.endDate || '9999-12-31'; // Use far future date if no end date
+            if (!(dayString >= t.startDate && dayString <= taskEndDate)) return false;
             
             if (t.days && t.days.length > 0) {
                 const taskDayIndices = t.days.map(d => (['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(d) + 1) % 7);
                 return taskDayIndices.includes(dayIndex);
             } else {
-                return isSameDay(taskStartDate, date);
+                return dayString === t.startDate;
             }
         }
         return false;
     });
-    const hasEvents = calendarEvents.some(e => isWithinInterval(date, { start: new Date(e.start), end: new Date(e.end) }));
+    const hasEvents = calendarEvents.some(e => {
+      const dayString = format(date, 'yyyy-MM-dd');
+      return dayString >= e.start && dayString <= e.end;
+    });
     return hasWorkHours || hasTasks || hasEvents;
   }, [users, tasks, calendarEvents]);
 
