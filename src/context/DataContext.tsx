@@ -1,8 +1,10 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
-import { taskService, calendarEventService, noveltyService } from '@/lib/supabase-service';
 import type { Task, CalendarEvent, Novelty } from '@/types';
+import { taskService } from '@/services/task-service';
+import { calendarEventService } from '@/services/events-service';
+import { noveltyService } from '@/services/novelties-service';
 
 type DataContextType = {
   tasks: Task[];
@@ -10,15 +12,18 @@ type DataContextType = {
   addTask: (task: Task) => void;
   updateTask: (task: Task) => Promise<void>;
   deleteTask: (taskId: string) => void;
+
   calendarEvents: CalendarEvent[];
   setCalendarEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>;
   addCalendarEvent: (event: CalendarEvent) => void;
+  
   novelties: Novelty[];
   setNovelties: React.Dispatch<React.SetStateAction<Novelty[]>>;
   addNovelty: (novelty: Novelty) => void;
   updateNovelty: (novelty: Novelty) => void;
   deleteNovelty: (noveltyId: string) => void;
   markNoveltyAsViewed: (noveltyId: string, userId: string) => Promise<void>;
+  
   loading: boolean;
   error: Error | null;
   refreshData: () => void;
@@ -33,15 +38,18 @@ export const DataContext = createContext<DataContextType>({
   addTask: () => {},
   updateTask: () => Promise.resolve(),
   deleteTask: () => {},
+  
   calendarEvents: [],
   setCalendarEvents: () => {},
   addCalendarEvent: () => {},
+  
   novelties: [],
   setNovelties: () => {},
   addNovelty: () => {},
   updateNovelty: () => {},
   deleteNovelty: () => {},
   markNoveltyAsViewed: () => Promise.resolve(),
+  
   loading: true,
   error: null,
   refreshData: () => {},
